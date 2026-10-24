@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id),f=n=>'$'+Math.round(n).toLocaleString();
 const store=initStore($('stage'));
 const P=[['water','礦泉水','💧',12,20],['cola','可樂','🥤',15,25],['milk','鮮奶','🥛',50,75,1],['chips','洋芋片','🍟',28,45],['choco','巧克力','🍫',38,59],['noodle','泡麵','🍜',22,35],['onigiri','御飯糰','🍙',22,35,1]]
  .map(([id,n,e,cost,price,cold],i)=>({id,n,e,cost,price,mkt:price,cold:!!cold,pack:[24,24,12,12,12,12,12][i],wh:cold?0:24,shelf:cold?0:8,want:0}));
-const S={money:3000,star:80,visit:0,lv:1,min:480,day:1,phase:'prep',orders:[],tab:'cash',sub:'store',pm:'cash',sel:-1,own:{},hired:{},kb:'',ambCap:600,coldCap:1000};
+const S={money:3000,star:80,visit:0,lv:1,min:480,day:1,phase:'prep',orders:[],qOpen:false,total:0,stat:{served:0,perfect:0,rev:0,thief:0,member:0,hot:0},daily:[],tab:'cash',sub:'store',pm:'cash',sel:-1,own:{},hired:{},kb:'',ambCap:600,coldCap:1000};
 const CAT={
  equip:[['cold','❄️','冷藏庫','解鎖冷藏倉容量（鮮奶、御飯糰要用）',1500],['hot','🍢','熱食檔口','賣關東煮、茶葉蛋、熱狗',350],['dine','🪑','就餐區','座位帶來額外客流與心情',480],['charge','🔋','共享行動電源','出租收入約 $8/天',120],['scan','⚡','一鍵掃台','收銀時出現「一鍵結算」',150],['pos','💳','智能POS','刷卡自動收款',180],['ac','🌬️','中央空調','夏天顧客心情＋',250]],
  staff:[['stock','🧑‍🔧','理貨員','自動把倉庫的貨補上貨架',50,2],['buyer','🧾','採購員','缺貨時自動進貨',70,3],['guard','👮','保安','抓小偷',80,2],['pack','📦','打包員','外送訂單打包',50,3],['night','🌙','夜班店員','打烊後也能 24 小時營業',90,3]],
@@ -19,8 +19,17 @@ const DEN=[[1000,'#3a6bc4'],[500,'#b8864b'],[200,'#2c9b7f'],[100,'#d94452'],[50,
 const pr=id=>P.find(p=>p.id===id),btn=(a,v,t,c)=>`<button class="${c||'sm'}" data-a="${a}" data-v="${v}">${t}</button>`;
 const used=c=>P.filter(p=>p.cold===c).reduce((a,p)=>a+p.wh,0);
 function toast(s,bad){const e=$('toast');e.textContent=s;e.className=bad?'bad':'';e.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(()=>e.style.opacity=0,1300)}
-function hud(){const m=Math.floor(S.min),t=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),W=['一','二','三','四','五','六','日'][(S.day+1)%7],pr=S.phase==='prep';
- $('hud').innerHTML=`<div class=r1><span class=pill style="font-size:15px">${pr?'準備中':S.phase==='open'?t:'已打烊'} <small style="color:#8a7566">第${S.day}天 週${W}</small></span></div><div class=r1><span class="pill r">日日鮮超市 Lv${S.lv}</span><span class=pill>⭐ ${S.star}</span>${pr?'':`<span class=pill>👥 ${S.visit} 進店</span>`}</div><div class=quest>${nextLv()}</div><div class=r1><span class=pill>🪙 ${f(S.money)}</span></div>`;
+// ---- 任務：升級任務（3 個條件）＋每日隨機任務 ----
+const POOL=[['perfect','完美找零',[3,5,8],'次',[60,100,160]],['served','服務顧客',[20,30,40],'位',[80,120,180]],['rev','單日營業額達',[600,900,1500],'元',[100,160,260]],['visit','進店人數達',[25,40,60],'人',[60,100,150]],['thief','抓到小偷',[1,2,3],'個',[120,200,300]],['member','新增會員',[2,4,6],'位',[80,120,180]],['hot','賣出熱食',[8,12,20],'份',[80,120,200]]];
+function newDaily(){return POOL.map(a=>[Math.random(),a]).sort((x,y)=>x[0]-y[0]).slice(0,3).map(([,a])=>{const d=rnd3(a[2].length);return{k:a[0],n:a[1],goal:a[2][d],unit:a[3],reward:a[4][d],done:false}})}
+function rnd3(n){return Math.floor(Math.random()*n)}
+const qv=k=>k==='visit'?S.visit:(S.stat[k]||0);
+function mainConds(){const g=[1500*S.lv,80+5*S.lv,5+S.lv],c=[S.total,S.star,store.shelves.length];return[['累計營業額',f],['店鋪星級',x=>x],['貨架數量',x=>x+' 個']].map(([n,fm],i)=>({n,cur:c[i],goal:g[i],ok:c[i]>=g[i],show:fm(c[i])+' / '+fm(g[i])}))}
+function qPanel(mc){const lvl=S.lv<MAXLV;return `<div class=qp><h4>${lvl?'升級「'+lvName(S.lv+1)+'」':'已是最高等級'}（${mc.filter(c=>c.ok).length}/3）</h4>`+mc.map(c=>`<div class=qr><div class=t>${c.ok?'✅':'⬜'} ${c.n}<small>${c.show}</small><div class=b2><i style="width:${Math.min(100,c.cur/c.goal*100)}%"></i></div></div></div>`).join('')+(lvl?`<div class=qr><div class=t>獎勵 ${f(500*S.lv)}</div><button data-a="upgrade" ${mc.every(c=>c.ok)?'':'disabled'}>升級</button></div>`:'')+`<h4>📅 每日任務 <small style="font-weight:500;color:#8a7566">隔天換新的</small></h4>`+S.daily.map((d,i)=>{const v=qv(d.k),ok=v>=d.goal;return `<div class=qr><div class=t>${d.n} ${d.goal}${d.unit}<small>${Math.min(v,d.goal)}/${d.goal} · 獎勵 ${f(d.reward)}</small><div class=b2><i style="width:${Math.min(100,v/d.goal*100)}%"></i></div></div><button data-a="claim" data-v="${i}" ${ok&&!d.done?'':'disabled'}>${d.done?'已領':'領取'}</button></div>`}).join('')+`</div>`}
+S.daily=newDaily();
+function hud(){const pr=S.phase==='prep',m=Math.floor(S.min),T=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),W=['一','二','三','四','五','六','日'][(S.day+1)%7],clk=pr?'準備中':S.phase==='open'?T:'已打烊',mc=mainConds();
+ const h=`<div class=r1 data-p="${S.phase}"><span class=pill style="font-size:15px"><span id=clock>{T}</span> <small style="color:#8a7566">第${S.day}天 週${W}</small></span></div><div class=r1><span class="pill r">日日鮮超市 Lv${S.lv}</span><span class=pill>⭐ ${S.star}</span>${pr?'':`<span class=pill>👥 ${S.visit} 進店</span>`}</div><div class=quest data-a="quest">${S.lv<MAXLV?`🎯 擴店升級為「${lvName(S.lv+1)}」 ${mc.filter(c=>c.ok).length}/3`:'🏆 已是最高等級'} ${S.qOpen?'▾':'▸'}</div>${S.qOpen?qPanel(mc):''}<div class=r1><span class=pill>🪙 ${f(S.money)}</span></div>`;
+ if(hud.k!==h){hud.k=h;$('hud').innerHTML=h.replace('{T}',clk)}else{const c=$('clock');if(c)c.textContent=clk}
  $('openBtn').style.display=pr?'block':'none';$('closeBtn').style.display=(S.phase==='open'&&S.min>=1320)?'block':'none'}
 // ---- 各分頁 ----
 function rCash(){const mk={cash:`<div class=rc><div class=l>牛奶 ×3　$14<br>啤酒 ×2　$11<br>可樂 ×4　$12</div><div class=r><small>應收</small><b>$37</b></div></div><div class=info><div>顧客付<b>$100</b></div><div>應找<b style="color:#ff5a4e">$63</b></div><div>已找<b style="color:#3a6bc4">$0</b></div></div><div class=bills style="grid-template-columns:repeat(4,1fr)">${DEN.map(d=>`<button class=b style="background:${d[1]}" data-a="toast" data-v="找零流程之後接上">$${d[0]}</button>`).join('')}</div><div class=acts>${btn('toast','x','撤銷','btn g')}${btn('toast','x','清空','btn g')}${btn('toast','x','確認找零','btn')}</div>`,
@@ -67,12 +76,17 @@ function act(a,v){v=String(v);const[x,y]=v.split('|');
  else if(a==='buy')buy(v);else if(a==='wall')store.setWall(+v);
  else if(a==='kp')S.kb=v==='C'?'':v==='<'?S.kb.slice(0,-1):(S.kb+v).slice(0,5);
  else if(a==='grab')$('app').classList.toggle('min');
+ else if(a==='quest')S.qOpen=!S.qOpen;
+ else if(a==='upgrade'){if(S.lv<MAXLV&&mainConds().every(c=>c.ok)){S.money+=500*S.lv;S.lv++;toast('升級成「'+lvName(S.lv)+'」！')}}
+ else if(a==='claim'){const d=S.daily[+v];if(d&&!d.done&&qv(d.k)>=d.goal){d.done=true;S.money+=d.reward;toast('領取 '+f(d.reward))}}
  else if(a==='open'){S.phase='open';S.min=480;S.visit=0;store.setOpen(true);toast('開門營業！')}
  else if(a==='close'){S.phase='closed';store.setOpen(false);const rev=S.visit*30,net=rev-Math.round(rev*.45)-100;$('modal').innerHTML=`<div class=box><h3 style="margin:0 0 4px">第${S.day}天 營業結束</h3><div style="text-align:center;font-size:32px;font-weight:800;color:#17a05a;margin:6px 0">+${f(net)}</div><div class=ln><span>營業額</span><span>${f(rev)}</span></div><div class=ln><span>商品成本</span><span>−${f(rev*.45)}</span></div><div class=ln><span>房租＋水電</span><span>−$100</span></div><p style="color:var(--sub);font-size:12px">這是示範數字，正式結算之後接上。</p><button class="btn w" data-a="next">下一天 →</button></div>`;$('modal').classList.add('on');return}
- else if(a==='next'){$('modal').classList.remove('on');S.day++;S.min=480;S.visit=0;S.phase='prep';S.orders.forEach(o=>pr(o.id).wh+=o.q);S.orders=[];P.forEach(p=>p.mkt=Math.round(p.cost*(1.55+Math.random()*.2)))}
+ else if(a==='next'){$('modal').classList.remove('on');S.day++;S.min=480;S.visit=0;S.phase='prep';S.orders.forEach(o=>pr(o.id).wh+=o.q);S.orders=[];S.daily=newDaily();S.stat={served:0,perfect:0,rev:0,thief:0,member:0,hot:0};P.forEach(p=>p.mkt=Math.round(p.cost*(1.55+Math.random()*.2)))}
  else if(a==='reset'){location.reload();return}
  render()}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b.dataset.v??'x')});
-setInterval(()=>{if(S.phase==='open'){if(S.min<1320){S.min+=3;if(Math.random()<.55)S.visit++}const d=S.orders.filter(o=>S.min>=o.eta);if(d.length){d.forEach(o=>pr(o.id).wh+=o.q);S.orders=S.orders.filter(o=>S.min<o.eta);toast('📦 貨到了！');if(S.tab==='wh')render()}}hud()},1000);
+function checkOrders(){const d=S.orders.filter(o=>S.min>=o.eta);if(d.length){d.forEach(o=>pr(o.id).wh+=o.q);S.orders=S.orders.filter(o=>S.min<o.eta);toast('📦 貨到了！');if(S.tab==='wh')render()}}
+let lt=performance.now();(function loop(){requestAnimationFrame(loop);const n=performance.now(),dt=Math.min(.2,(n-lt)/1000);lt=n;
+ if(S.phase==='open'&&S.min<1320){const o=Math.floor(S.min);S.min=Math.min(1320,S.min+dt*3);if(Math.floor(S.min)!==o){if(Math.random()<.18)S.visit++;checkOrders();hud()}}})(); // 遊戲時間每秒走 3 分鐘，一分鐘一分鐘平順地走
 render();
 store.setOpen(false);focus();
