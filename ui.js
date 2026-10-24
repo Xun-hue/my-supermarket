@@ -3,8 +3,8 @@ import {initStore} from './store.js';
 const $=id=>document.getElementById(id),f=n=>'$'+Math.round(n).toLocaleString();
 const store=initStore($('stage'));
 const P=[['water','礦泉水','💧',12,20],['cola','可樂','🥤',15,25],['milk','鮮奶','🥛',50,75,1],['chips','洋芋片','🍟',28,45],['choco','巧克力','🍫',38,59],['noodle','泡麵','🍜',22,35],['onigiri','御飯糰','🍙',22,35,1]]
- .map(([id,n,e,cost,price,cold])=>({id,n,e,cost,price,mkt:price,cold:!!cold,wh:cold?0:12,shelf:cold?0:8,want:0}));
-const S={money:3000,star:88,visit:0,lv:2,min:480,day:10,tab:'cash',sub:'store',pm:'cash',sel:-1,own:{},hired:{},kb:'',pack:12,ambCap:200,coldCap:100};
+ .map(([id,n,e,cost,price,cold],i)=>({id,n,e,cost,price,mkt:price,cold:!!cold,pack:[24,24,12,12,12,12,12][i],wh:cold?0:24,shelf:cold?0:8,want:0}));
+const S={money:3000,star:80,visit:0,lv:1,min:480,day:1,phase:'prep',orders:[],tab:'cash',sub:'store',pm:'cash',sel:-1,own:{},hired:{},kb:'',ambCap:600,coldCap:1000};
 const CAT={
  equip:[['cold','❄️','冷藏庫','解鎖冷藏倉容量（鮮奶、御飯糰要用）',1500],['hot','🍢','熱食檔口','賣關東煮、茶葉蛋、熱狗',350],['dine','🪑','就餐區','座位帶來額外客流與心情',480],['charge','🔋','共享行動電源','出租收入約 $8/天',120],['scan','⚡','一鍵掃台','收銀時出現「一鍵結算」',150],['pos','💳','智能POS','刷卡自動收款',180],['ac','🌬️','中央空調','夏天顧客心情＋',250]],
  staff:[['stock','🧑‍🔧','理貨員','自動把倉庫的貨補上貨架',50,2],['buyer','🧾','採購員','缺貨時自動進貨',70,3],['guard','👮','保安','抓小偷',80,2],['pack','📦','打包員','外送訂單打包',50,3],['night','🌙','夜班店員','打烊後也能 24 小時營業',90,3]],
@@ -15,9 +15,9 @@ const DEN=[[1000,'#3a6bc4'],[500,'#b8864b'],[200,'#2c9b7f'],[100,'#d94452'],[50,
 const pr=id=>P.find(p=>p.id===id),btn=(a,v,t,c)=>`<button class="${c||'sm'}" data-a="${a}" data-v="${v}">${t}</button>`;
 const used=c=>P.filter(p=>p.cold===c).reduce((a,p)=>a+p.wh,0);
 function toast(s,bad){const e=$('toast');e.textContent=s;e.className=bad?'bad':'';e.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(()=>e.style.opacity=0,1300)}
-function hud(){const m=Math.floor(S.min),t=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
- $('hud').innerHTML=`<div class=r1><span class=pill>${t} 第${S.day}天 周三</span></div><div class=r1><span class="pill r">日日鮮超市 Lv${S.lv}</span><span class=pill>⭐ ${S.star}</span><span class=pill>👥 ${S.visit} 進店</span></div><div class=quest>🎯 擴店升級為「鄰里超市」 2/3 +$500</div><div class=r1><span class=pill>🪙 ${f(S.money)}</span></div>`;
- $('closeBtn').style.display=S.min>=1320?'block':'none'}
+function hud(){const m=Math.floor(S.min),t=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),W=['一','二','三','四','五','六','日'][(S.day+1)%7],pr=S.phase==='prep';
+ $('hud').innerHTML=`<div class=r1><span class=pill style="font-size:15px">${pr?'準備中':S.phase==='open'?t:'已打烊'} <small style="color:#8a7566">第${S.day}天 週${W}</small></span></div><div class=r1><span class="pill r">日日鮮超市 Lv${S.lv}</span><span class=pill>⭐ ${S.star}</span>${pr?'':`<span class=pill>👥 ${S.visit} 進店</span>`}</div><div class=quest>🎯 擴店升級為「鄰里超市」 0/3 +$500</div><div class=r1><span class=pill>🪙 ${f(S.money)}</span></div>`;
+ $('openBtn').style.display=pr?'block':'none';$('closeBtn').style.display=(S.phase==='open'&&S.min>=1320)?'block':'none'}
 // ---- 各分頁 ----
 function rCash(){const mk={cash:`<div class=rc><div class=l>牛奶 ×3　$14<br>啤酒 ×2　$11<br>可樂 ×4　$12</div><div class=r><small>應收</small><b>$37</b></div></div><div class=info><div>顧客付<b>$100</b></div><div>應找<b style="color:#ff5a4e">$63</b></div><div>已找<b style="color:#3a6bc4">$0</b></div></div><div class=bills style="grid-template-columns:repeat(4,1fr)">${DEN.map(d=>`<button class=b style="background:${d[1]}" data-a="toast" data-v="找零流程之後接上">$${d[0]}</button>`).join('')}</div><div class=acts>${btn('toast','x','撤銷','btn g')}${btn('toast','x','清空','btn g')}${btn('toast','x','確認找零','btn')}</div>`,
  qr:`<div class=rc><div class=l>礦泉水 ×2　$40<br>洋芋片　$45</div><div class=r><small>應收</small><b>$85</b></div></div><div class=qrw><div class=qr>${Array.from({length:81},()=>`<i style="background:${Math.random()<.5?'#111':'#fff'}"></i>`).join('')}</div><div style="flex:1"><b>顧客出示了付款碼</b><br><br>${btn('toast','x','📷 掃碼收款','btn w')}</div></div>`,
@@ -25,10 +25,10 @@ function rCash(){const mk={cash:`<div class=rc><div class=l>牛奶 ×3　$14<br>
  return `<div class=c><div style="font-size:40px">🧾</div><b>暫時沒人排隊</b><p>可以去補貨、調價～</p></div><div class=hd><span>收銀介面預覽</span><small>流程之後接上</small></div><div class=chips>${[['cash','💵 現金'],['qr','📱 行動支付'],['card','💳 刷卡']].map(([k,n])=>btn('pm',k,n,'chip'+(S.pm===k?' on':''))).join('')}</div>${mk[S.pm]}`}
 function rShelf(){const sh=store.shelves;return `<div class=hd><span>貨架管理</span><small>點一排看它在店裡的位置</small></div><div class=hint>👍 所有貨架都挺滿的</div>`+sh.map((s,i)=>{const on=S.sel===i,fill=[90,70,55,100,40,80][i];
  return `<div class=card style="${on?'border-color:#ff5a4e':''}"><div class=nm>${s.name}<small>貨架 Lv1 · 6 格</small><div class=bar style="margin-top:6px"><i style="width:${fill}%"></i></div></div>${btn('sel',on?-1:i,on?'收起':'查看',on?'sm g':'sm')}</div>`+(on?`<div style="padding:0 4px 10px">${P.slice(0,3).map(p=>`<div class=row><span class=ic>${p.e}</span><div class=nm>${p.n}<small>貨架 ${p.shelf}/12 · 倉庫 ${p.wh}</small></div>${btn('toast','補貨之後接上','補滿','sm g')}</div>`).join('')}<div class=acts style="margin-top:8px">${btn('toast','之後接上','整架補滿','btn g')}${btn('toast','之後接上','擴貨 $200','btn g')}${btn('toast','之後接上','轉 90°','btn g')}</div></div>`:'')}).join('')}
-function rWh(){const au=used(false),cu=used(true),cold=S.own.cold,want=P.reduce((a,p)=>a+p.want,0),cost=P.reduce((a,p)=>a+p.want*p.cost*S.pack,0);
- return `<div class=hd><span>倉庫進貨</span>${btn('toast','之後接上','智能補貨','sm g')}</div><div class=cap>常溫 ${au}/${S.ambCap}<div class=bar><i style="width:${au/S.ambCap*100}%"></i></div></div><div class=cap>${cold?`冷藏 ${cu}/${S.coldCap}<div class=bar><i style="width:${cu/S.coldCap*100}%;background:#4aa3ff"></i></div>`:`❄️ 冷藏庫未購買　${btn('tab','exp','去擴店購買','sm')}`}</div>`+
- P.map(p=>{const lock=p.cold&&!cold;return `<div class=row style="${lock?'opacity:.5':''}"><span class=ic>${p.e}</span><div class=nm>${p.n}${p.cold?' ❄️':''}<small>進價 ${f(p.cost)} · 倉庫 ${p.wh} · 貨架 ${p.shelf} · 1箱=${S.pack}件</small></div>${lock?'<span class="sm off">需冷藏庫</span>':btn('want',p.id+'|-1','−','sm g')+`<b style="width:22px;text-align:center">${p.want}</b>`+btn('want',p.id+'|1','＋','sm g')}</div>`}).join('')+
- `<div style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 2px;display:flex;justify-content:space-between;align-items:center"><div><small style="color:var(--sub)">合計</small><br><b style="font-size:20px;color:#d64034">${f(cost)}</b></div>${btn('order','x','下單進貨',want?'btn':'btn g')}</div>`}
+function rWh(){const au=used(false),cu=used(true),cold=S.own.cold,want=P.reduce((a,p)=>a+p.want,0),cost=P.reduce((a,p)=>a+p.want*p.cost*p.pack,0);
+ return `<div class=hd><span>倉庫進貨</span><small>${S.phase==='prep'?'開門前下單立即到貨':'營業中下單，30 分鐘後到'}</small>${btn('toast','之後接上','智能補貨','sm g')}</div><div class=cap>常溫 ${au}/${S.ambCap}<div class=bar><i style="width:${au/S.ambCap*100}%"></i></div></div><div class=cap>${cold?`冷藏 ${cu}/${S.coldCap}<div class=bar><i style="width:${cu/S.coldCap*100}%;background:#4aa3ff"></i></div>`:`❄️ 冷藏庫未購買　${btn('tab','exp','去擴店購買','sm')}`}</div>`+
+ P.map(p=>{const lock=p.cold&&!cold;return `<div class=row style="${lock?'opacity:.5':''}"><span class=ic>${p.e}</span><div class=nm>${p.n}${p.cold?' ❄️':''}<small>進價 ${f(p.cost)} · 倉庫 ${p.wh} · 貨架 ${p.shelf} · 1箱=${p.pack}件</small></div>${lock?'<span class="sm off">需冷藏庫</span>':btn('want',p.id+'|-1','−','sm g')+`<b style="width:22px;text-align:center">${p.want}</b>`+btn('want',p.id+'|1','＋','sm g')}</div>`}).join('')+
+ (S.orders.length?`<div class=hint>🚚 配送中：${S.orders.map(o=>pr(o.id).n+' ×'+o.q).join('、')}</div>`:'')+`<div style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 2px;display:flex;justify-content:space-between;align-items:center"><div><small style="color:var(--sub)">合計</small><br><b style="font-size:20px;color:#d64034">${f(cost)}</b></div>${btn('order','x','下單進貨',want?'btn':'btn g')}</div>`}
 function rPrice(){return `<div class=hd><span>今日價格</span><small>市價每天浮動</small></div><div class=chips>${btn('pall','mkt','全部=市價','chip')}${btn('pall','.9','全部九折','chip')}${btn('pall','1.1','全部+10%','chip')}</div>`+P.map(p=>{const m=Math.round((p.price-p.cost)/p.price*100),d=Math.round((p.price-p.mkt)/p.mkt*100);
  return `<div class=row><span class=ic>${p.e}</span><div class=nm>${p.n}<small>進價 ${f(p.cost)} · 市價 ${f(p.mkt)} · 毛利 ${m}%${d?` · <span style="color:${d>0?'#d94452':'#2c9b7f'}">${d>0?'偏貴':'偏便宜'} ${Math.abs(d)}%</span>`:''}</small></div>${btn('price',p.id+'|-1','−','sm g')}<b style="width:46px;text-align:center">${f(p.price)}</b>${btn('price',p.id+'|1','＋','sm g')}</div>`}).join('')}
 function cards(k){return CAT[k].map(([id,ic,n,d,p,lv])=>{const lock=lv&&S.lv<lv,own=k==='staff'?S.hired[id]:S.own[id];
@@ -51,21 +51,24 @@ function buy(v){const[k,id]=v.split('|'),it=CAT[k].find(x=>x[0]===id),pri=it[4];
  if(k==='staff'){S.hired[id]=!S.hired[id];toast(S.hired[id]?'已雇用 '+it[2]:'已解雇 '+it[2]);return}
  if(S.own[id])return toast('已經擁有了');if(S.money<pri)return toast('資金不足',1);
  S.money-=pri;S.own[id]=1;if(id==='hot'||id==='dine')store.setVisible(id,true);toast('已購買 '+it[2])}
+function focus(){const t=S.tab;store.focus(t==='shelf'?(S.sel>=0?'shelf'+S.sel:'shelves'):t==='wh'?'wh':t==='cash'?'cash':t==='food'?'food':'all')}
 function act(a,v){v=String(v);const[x,y]=v.split('|');
  if(a==='toast'){toast(v==='x'?'之後接上':v);return}
- if(a==='tab'){S.tab=v;S.sel=-1;store.mark(-1)}else if(a==='sub')S.sub=v;else if(a==='pm')S.pm=v;
- else if(a==='sel'){S.sel=+v;store.mark(+v)}
+ if(a==='tab'){S.tab=v;S.sel=-1;store.mark(-1);focus()}else if(a==='sub')S.sub=v;else if(a==='pm')S.pm=v;
+ else if(a==='sel'){S.sel=+v;store.mark(+v);focus()}
  else if(a==='want')pr(x).want=Math.max(0,pr(x).want+ +y);
- else if(a==='order'){const c=P.reduce((s,p)=>s+p.want*p.cost*S.pack,0);if(!c)return;if(c>S.money)return toast('資金不足',1);S.money-=c;P.forEach(p=>{p.wh+=p.want*S.pack;p.want=0});toast('已下單，貨到倉庫')}
+ else if(a==='order'){const c=P.reduce((s,p)=>s+p.want*p.cost*p.pack,0);if(!c)return;if(c>S.money)return toast('資金不足',1);const qa=P.filter(p=>!p.cold).reduce((n,p)=>n+p.want*p.pack,0),qc=P.filter(p=>p.cold).reduce((n,p)=>n+p.want*p.pack,0);if(used(false)+qa>S.ambCap||used(true)+qc>S.coldCap)return toast('倉庫空間不足',1);S.money-=c;P.forEach(p=>{if(p.want){const q=p.want*p.pack;if(S.phase==='prep')p.wh+=q;else S.orders.push({id:p.id,q,eta:S.min+30});p.want=0}});toast(S.phase==='prep'?'已下單，貨立即到倉庫':'已下單，遊戲內 30 分鐘後到貨')}
  else if(a==='price')pr(x).price=Math.max(1,pr(x).price+ +y);
  else if(a==='pall')P.forEach(p=>p.price=Math.max(1,Math.round(v==='mkt'?p.mkt:p.price*+v)));
  else if(a==='buy')buy(v);else if(a==='wall')store.setWall(+v);
  else if(a==='kp')S.kb=v==='C'?'':v==='<'?S.kb.slice(0,-1):(S.kb+v).slice(0,5);
  else if(a==='grab')$('app').classList.toggle('min');
- else if(a==='close'){const rev=S.visit*30,net=rev-Math.round(rev*.45)-100;$('modal').innerHTML=`<div class=box><h3 style="margin:0 0 4px">第${S.day}天 營業結束</h3><div style="text-align:center;font-size:32px;font-weight:800;color:#17a05a;margin:6px 0">+${f(net)}</div><div class=ln><span>營業額</span><span>${f(rev)}</span></div><div class=ln><span>商品成本</span><span>−${f(rev*.45)}</span></div><div class=ln><span>房租＋水電</span><span>−$100</span></div><p style="color:var(--sub);font-size:12px">這是示範數字，正式結算之後接上。</p><button class="btn w" data-a="next">下一天 →</button></div>`;$('modal').classList.add('on');return}
- else if(a==='next'){$('modal').classList.remove('on');S.day++;S.min=480;S.visit=0}
+ else if(a==='open'){S.phase='open';S.min=480;S.visit=0;store.setOpen(true);toast('開門營業！')}
+ else if(a==='close'){S.phase='closed';store.setOpen(false);const rev=S.visit*30,net=rev-Math.round(rev*.45)-100;$('modal').innerHTML=`<div class=box><h3 style="margin:0 0 4px">第${S.day}天 營業結束</h3><div style="text-align:center;font-size:32px;font-weight:800;color:#17a05a;margin:6px 0">+${f(net)}</div><div class=ln><span>營業額</span><span>${f(rev)}</span></div><div class=ln><span>商品成本</span><span>−${f(rev*.45)}</span></div><div class=ln><span>房租＋水電</span><span>−$100</span></div><p style="color:var(--sub);font-size:12px">這是示範數字，正式結算之後接上。</p><button class="btn w" data-a="next">下一天 →</button></div>`;$('modal').classList.add('on');return}
+ else if(a==='next'){$('modal').classList.remove('on');S.day++;S.min=480;S.visit=0;S.phase='prep';S.orders.forEach(o=>pr(o.id).wh+=o.q);S.orders=[];P.forEach(p=>p.mkt=Math.round(p.cost*(1.55+Math.random()*.2)))}
  else if(a==='reset'){location.reload();return}
  render()}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b.dataset.v??'x')});
-setInterval(()=>{if(S.min<1320){S.min+=3;if(Math.random()<.55)S.visit++}hud()},1000);
+setInterval(()=>{if(S.phase==='open'){if(S.min<1320){S.min+=3;if(Math.random()<.55)S.visit++}const d=S.orders.filter(o=>S.min>=o.eta);if(d.length){d.forEach(o=>pr(o.id).wh+=o.q);S.orders=S.orders.filter(o=>S.min<o.eta);toast('📦 貨到了！');if(S.tab==='wh')render()}}hud()},1000);
 render();
+store.setOpen(false);focus();
