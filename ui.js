@@ -9,6 +9,10 @@ const CAT={
  equip:[['cold','❄️','冷藏庫','解鎖冷藏倉容量（鮮奶、御飯糰要用）',1500],['hot','🍢','熱食檔口','賣關東煮、茶葉蛋、熱狗',350],['dine','🪑','就餐區','座位帶來額外客流與心情',480],['charge','🔋','共享行動電源','出租收入約 $8/天',120],['scan','⚡','一鍵掃台','收銀時出現「一鍵結算」',150],['pos','💳','智能POS','刷卡自動收款',180],['ac','🌬️','中央空調','夏天顧客心情＋',250]],
  staff:[['stock','🧑‍🔧','理貨員','自動把倉庫的貨補上貨架',50,2],['buyer','🧾','採購員','缺貨時自動進貨',70,3],['guard','👮','保安','抓小偷',80,2],['pack','📦','打包員','外送訂單打包',50,3],['night','🌙','夜班店員','打烊後也能 24 小時營業',90,3]],
  mkt:[['flyer','📄','發傳單','明天客流 +25%',160],['ig','📱','IG 限動廣告','客流 +20%、口碑 +3',240],['member','💳','會員卡','會員折扣，回頭客更多',500]]};
+// 等級名稱表：原作至少有 Lv9，之後要加新等級只要在這裡多加一行名字（沒寫名字的等級會顯示「Lv數字」）
+const LV=['街角柑仔店','社區便利店','鄰里超市','區域超市','大型量販店','連鎖旗艦店','生活購物中心','城市百貨','超級商業廣場'];
+const MAXLV=9,lvName=n=>LV[n-1]||'Lv'+n;
+const nextLv=()=>S.lv<MAXLV?`🎯 擴店升級為「${lvName(S.lv+1)}」 0/3 +$${500*S.lv}`:'🏆 已是最高等級';
 const SUBS=[['store','店鋪'],['equip','設備'],['staff','員工'],['mkt','營銷'],['decor','裝修'],['bank','銀行'],['ledger','帳本']];
 const TABS=[['cash','🧾','收銀'],['shelf','🗄️','貨架'],['wh','📦','倉庫'],['price','🏷️','價格'],['exp','🏪','擴店'],['food','🍜','餐飲'],['set','⚙️','設定']];
 const DEN=[[1000,'#3a6bc4'],[500,'#b8864b'],[200,'#2c9b7f'],[100,'#d94452'],[50,'#e0b84a;color:#333'],[10,'#c9a63c;color:#333'],[5,'#c7ccd6;color:#333'],[1,'#b9bec8;color:#333']];
@@ -16,7 +20,7 @@ const pr=id=>P.find(p=>p.id===id),btn=(a,v,t,c)=>`<button class="${c||'sm'}" dat
 const used=c=>P.filter(p=>p.cold===c).reduce((a,p)=>a+p.wh,0);
 function toast(s,bad){const e=$('toast');e.textContent=s;e.className=bad?'bad':'';e.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(()=>e.style.opacity=0,1300)}
 function hud(){const m=Math.floor(S.min),t=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),W=['一','二','三','四','五','六','日'][(S.day+1)%7],pr=S.phase==='prep';
- $('hud').innerHTML=`<div class=r1><span class=pill style="font-size:15px">${pr?'準備中':S.phase==='open'?t:'已打烊'} <small style="color:#8a7566">第${S.day}天 週${W}</small></span></div><div class=r1><span class="pill r">日日鮮超市 Lv${S.lv}</span><span class=pill>⭐ ${S.star}</span>${pr?'':`<span class=pill>👥 ${S.visit} 進店</span>`}</div><div class=quest>🎯 擴店升級為「鄰里超市」 0/3 +$500</div><div class=r1><span class=pill>🪙 ${f(S.money)}</span></div>`;
+ $('hud').innerHTML=`<div class=r1><span class=pill style="font-size:15px">${pr?'準備中':S.phase==='open'?t:'已打烊'} <small style="color:#8a7566">第${S.day}天 週${W}</small></span></div><div class=r1><span class="pill r">日日鮮超市 Lv${S.lv}</span><span class=pill>⭐ ${S.star}</span>${pr?'':`<span class=pill>👥 ${S.visit} 進店</span>`}</div><div class=quest>${nextLv()}</div><div class=r1><span class=pill>🪙 ${f(S.money)}</span></div>`;
  $('openBtn').style.display=pr?'block':'none';$('closeBtn').style.display=(S.phase==='open'&&S.min>=1320)?'block':'none'}
 // ---- 各分頁 ----
 function rCash(){const mk={cash:`<div class=rc><div class=l>牛奶 ×3　$14<br>啤酒 ×2　$11<br>可樂 ×4　$12</div><div class=r><small>應收</small><b>$37</b></div></div><div class=info><div>顧客付<b>$100</b></div><div>應找<b style="color:#ff5a4e">$63</b></div><div>已找<b style="color:#3a6bc4">$0</b></div></div><div class=bills style="grid-template-columns:repeat(4,1fr)">${DEN.map(d=>`<button class=b style="background:${d[1]}" data-a="toast" data-v="找零流程之後接上">$${d[0]}</button>`).join('')}</div><div class=acts>${btn('toast','x','撤銷','btn g')}${btn('toast','x','清空','btn g')}${btn('toast','x','確認找零','btn')}</div>`,
@@ -34,7 +38,7 @@ function rPrice(){return `<div class=hd><span>今日價格</span><small>市價�
 function cards(k){return CAT[k].map(([id,ic,n,d,p,lv])=>{const lock=lv&&S.lv<lv,own=k==='staff'?S.hired[id]:S.own[id];
  return `<div class=card><span class=ic>${ic}</span><div class=nm>${n}<small>${d}${k==='staff'?` · 工資 ${f(p)}/天`:''}</small></div>${lock?`<span class="sm off">Lv${lv}</span>`:btn('buy',k+'|'+id,own?(k==='staff'?'解雇':'已擁有'):(k==='staff'?'雇用':f(p)),own?(k==='staff'?'sm g':'sm ok'):'sm')}</div>`}).join('')}
 function rExp(){const sub={
- store:`<div class=card><span class=ic>🏪</span><div class=nm>日日鮮超市 Lv${S.lv}<small>租金 $80/天 · 目前 6 個貨架</small></div></div><div class=card><span class=ic>🏗️</span><div class=nm>店面擴建<small>面積變大、可放更多貨架</small></div>${btn('toast','之後接上','$3,800','sm')}</div><div class=hint>🎯 擴店升級為「鄰里超市」 2/3　獎勵 $500</div>`,
+ store:`<div class=card><span class=ic>🏪</span><div class=nm>日日鮮超市 Lv${S.lv}<small>${lvName(S.lv)} · 租金 $80/天 · 目前 6 個貨架</small></div></div><div class=card><span class=ic>🏗️</span><div class=nm>店面擴建<small>面積變大、可放更多貨架</small></div>${btn('toast','之後接上','$3,800','sm')}</div><div class=hint>${nextLv()}</div>`,
  equip:cards('equip'),staff:`<div class=hint>員工每天結算工資；有些要店鋪等級夠才能雇用</div>`+cards('staff'),mkt:cards('mkt'),
  decor:`<div class=hd><span>牆壁顏色</span></div><div class=sw>${[[0xf6ede2,'奶油'],[0xcfe6f7,'淺藍'],[0xf7d5dd,'粉紅'],[0xd6f0e0,'薄荷']].map(([c,n])=>`<button style="background:#${c.toString(16)}" data-a="wall" data-v="${c}" title="${n}"></button>`).join('')}</div><div class=hd><span>擺設</span><small>心情加成</small></div>${[['🪴','綠植','心情 +0.8',80],['🖼️','海報','心情 +0.6',50],['🧶','地毯','心情 +0.6',120]].map(([i,n,d,p])=>`<div class=card><span class=ic>${i}</span><div class=nm>${n}<small>${d}</small></div>${btn('toast','之後接上',f(p),'sm')}</div>`).join('')}`,
  bank:`<div class=hd><span>現金 ${f(S.money)}</span></div><div class=card><span class=ic>🏦</span><div class=nm>活期<small>日息 0.2%，隨存隨取</small></div>${btn('toast','之後接上','存入','sm')}</div><div class=card><span class=ic>🔒</span><div class=nm>定期<small>3 天 1.2% · 7 天 3.5% · 14 天 9%</small></div>${btn('toast','之後接上','存入','sm')}</div><div class=card><span class=ic>💸</span><div class=nm>貸款<small>日息 0.8%，額度隨資產成長</small></div>${btn('toast','之後接上','借款','sm')}</div>`,
