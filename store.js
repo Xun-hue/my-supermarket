@@ -60,7 +60,7 @@ export function initStore(host){
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,12),new THREE.MeshLambertMaterial({map:ft}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
  const walls=[box(16.4,2.8,.2,0xf6ede2,0,1.4,-6.1,scene),box(.2,1,4.7,0xf6ede2,-8.1,.5,-3.85,scene),box(.2,1,5.6,0xf6ede2,-8.1,.5,3.3,scene),box(.2,1,12.4,0xf6ede2,8.1,.5,0,scene),box(13.4,1,.2,0xf6ede2,-1.5,.5,6.1,scene),box(1,1,.2,0xf6ede2,7.7,.5,6.1,scene)];
  box(16.6,.35,.3,0xc0392b,0,2.6,-6.05,scene);box(.08,1.3,12.2,0xbfe3ff,8.1,1.65,0,scene,.2);box(13.2,1.3,.08,0xbfe3ff,-1.5,1.65,6.1,scene,.2);box(.9,1.3,.08,0xbfe3ff,7.7,1.65,6.1,scene,.2);
- [5.2,7.2].forEach(x=>box(.15,2.3,.15,0xff5a4e,x,1.15,6.1,scene));box(2.2,.35,.2,0xff5a4e,6.2,2.45,6.1,scene);box(1.8,.04,1.2,0xd94452,6.2,.03,5.6,scene);
+ [5.2,7.2].forEach(x=>box(.15,2.3,.15,0xff5a4e,x,1.15,6.1,scene));box(2.2,.35,.2,0xff5a4e,6.2,2.45,6.1,scene);box(1.8,.04,1.2,0xd94452,6.2,.03,5.6,scene);for(let i=0;i<8;i++)box(.28,.1,1.3,i%2?0xffffff:0xd94452,5.2+i*.28,2.62,6.75,scene);
  [-1.5,.5].forEach(z=>box(.3,2.3,.2,0x9aa5b8,-8.1,1.15,z,scene));box(.3,.35,2.2,0x9aa5b8,-8.1,2.3,-.5,scene);box(1.4,.04,2,0xc4c4cc,-8.2,.01,-.5,scene);
  // 倉庫棟（在店的左邊）
  const wf=box(9.6,.1,7.6,0xc4c4cc,-13,-.05,-2.5,scene);box(9.6,1.6,.2,0xb8b8c0,-13,.8,-6.1,scene);box(.2,1.6,7.6,0xb8b8c0,-17.8,.8,-2.5,scene);box(9.6,.5,.2,0xb8b8c0,-13,.25,1.3,scene);box(9.6,.3,.25,0xc0392b,-13,1.55,-6.05,scene);
@@ -89,7 +89,7 @@ export function initStore(host){
  const cust=Array.from({length:6},(_,i)=>{const m=person([0xe05a4a,0x3fa65b,0x6a5acd,0xf2a33a,0x2d7ff9,0xc2185b][i]);const w=WP[rnd(WP.length)];m.position.set(w[0],0,w[1]);m.visible=false;scene.add(m);return{m,t:WP[rnd(WP.length)]}});
  const ring=new THREE.Mesh(new THREE.RingGeometry(1.3,1.5,32),new THREE.MeshBasicMaterial({color:0xffc400,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;ring.visible=false;scene.add(ring);
  // 鏡頭：預設位置會順順滑過去；單指旋轉、雙指縮放
- const PRE={all:{x:-1,z:.5,az:.62,el:.9,dist:25},cash:{x:2.8,z:3.2,az:.5,el:.8,dist:12},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:-1,z:-4,az:.35,el:.75,dist:16},food:{x:-5,z:4.5,az:.5,el:.85,dist:13}};
+ const PRE={all:{x:-1,z:.5,az:.62,el:.9,dist:25},cash:{x:2.8,z:3.4,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:-1,z:-4,az:.35,el:.75,dist:16},food:{x:-5,z:4.5,az:.5,el:.85,dist:13}};
  const goal={...PRE.all},cur={...PRE.all},pts=new Map(),cv=R.domElement;
  const place=()=>{cam.position.set(cur.x+Math.sin(cur.az)*Math.cos(cur.el)*cur.dist,.6+Math.sin(cur.el)*cur.dist,cur.z+Math.cos(cur.az)*Math.cos(cur.el)*cur.dist);cam.lookAt(cur.x,.6,cur.z)};
  const pd=()=>{const a=[...pts.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};
