@@ -66,21 +66,27 @@ export function initStore(host){
  const wf=box(9.6,.1,7.6,0xc4c4cc,-13,-.05,-2.5,scene);box(9.6,1.6,.2,0xb8b8c0,-13,.8,-6.1,scene);box(.2,1.6,7.6,0xb8b8c0,-17.8,.8,-2.5,scene);box(9.6,.5,.2,0xb8b8c0,-13,.25,1.3,scene);box(9.6,.3,.25,0xc0392b,-13,1.55,-6.05,scene);
  [-16,-13.4,-10.8].forEach(x=>rack(scene,x,-5.3,0));rack(scene,-17,-3,Math.PI/2);rack(scene,-17,-.4,Math.PI/2);
  for(let r=0;r<2;r++)for(let i=0;i<3-r;i++)box(.7,.5,.6,0xc8955e,-11.6+i*.75+r*.37,.25+r*.5,-3.4,scene);
- box(3,2.4,2.4,0xf5f7fa,-14,1.2,0,scene);box(1.1,1.9,.06,0x3a6ea5,-14,.97,1.23,scene);
+ const coldroom=new THREE.Group();coldroom.visible=false;scene.add(coldroom);box(3,2.4,2.4,0xf5f7fa,-14,1.2,0,coldroom);box(1.1,1.9,.06,0x3a6ea5,-14,.97,1.23,coldroom);
  // 貨架（UI 會讀這份清單）
- const OR=0xff8a3d,BL=0x3a7bd5;
- const DEF=[['#1 飲料・零食貨架','飲料·零食',-6,-5.4,['water','cola','chips'],OR],['#2 速食・零食貨架','速食·零食',-3.4,-5.4,['noodle','chips','choco'],BL],['#3 零食・日用貨架','零食·日用',-.8,-5.4,['choco','chips','water'],OR],
-  ['#4 冷藏櫃','冷藏櫃',1.9,-5.4,['milk','onigiri','milk'],BL,1],['#5 冷藏櫃','冷藏櫃',4.5,-5.4,['cola','water','milk'],BL,1],['#6 島型貨架','速食·零食',-5,-2,['noodle','cola','chips'],OR]];
+ const OR=0xff8a3d,BL=0x3a7bd5,opt={coldroom};
  const lbl=[],W={w:1,h:1};
- function label(html,x,y,z,vis){const e=document.createElement('div');e.className='lb';e.innerHTML=html;host.appendChild(e);lbl.push({e,v:new THREE.Vector3(x,y,z),vis})}
- const SH=DEF.map(([name,short,x,z,cols,top,gl])=>{scene.add(shelf(x,z,0,cols,top,gl));if(!gl&&z>-5)scene.add(shelf(x,z-.75,Math.PI,cols,top));label(short,x,2.3,z);return{name,x,z}});
- scene.add(shelf(-2.2,-2,0,['noodle','chips','choco'],BL),shelf(-2.2,-2.75,Math.PI,['water','cola','chips'],BL));label('日用·雜貨',-2.2,2.3,-2.4);label('倉庫 →',-8.1,2.75,-.5);label('冷藏庫',-14,2.7,0);
- const veg=new THREE.Group();veg.position.set(3,0,-2.2);scene.add(veg);const sg=new THREE.SphereGeometry(.13,8,6);
- for(let i=0;i<3;i++){box(.9,.45,.8,0xb98b5e,-1+i,.22,0,veg);for(let k=0;k<7;k++){const m=new THREE.Mesh(sg,M([0xd63030,0x3fa65b,0xff8a3d][i]));m.position.set(-1+i+(k%3-1)*.25,.52,(Math.floor(k/3)-1)*.25);veg.add(m)}}label('生鮮果蔬',3,1.3,-2.2);
- const fz=new THREE.Group();fz.position.set(6.2,0,-2.4);scene.add(fz);box(2,.8,1,0xf4f6fa,0,.4,0,fz);box(1.9,.08,.9,0xbfe3ff,0,.84,0,fz,.5);for(let i=0;i<5;i++)box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][i%3],-.7+i*.35,.8,0,fz);label('冷凍櫃',6.2,1.4,-2.4);
- const cl=new THREE.Group();cl.position.set(6.4,0,.4);scene.add(cl);box(1.8,.8,.9,0xd94452,0,.4,0,cl);box(1.9,.08,1,0xe8b830,0,.84,0,cl);for(let i=0;i<4;i++)box(.3,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][i%3],-.6+i*.4,1,0,cl);label('臨期 <em>7折</em>',6.4,1.8,.4);
+ function label(html,x,y,z,vis,fx){const e=document.createElement('div');e.className='lb';e.innerHTML=html;host.appendChild(e);lbl.push({e,v:new THREE.Vector3(x,y,z),vis,fx})}
+ label('倉庫 →',-8.1,2.75,-.5);label('冷藏庫',-14,2.7,0,()=>coldroom.visible);
+ // 賣場上的貨架／櫃台：由玩家買了什麼決定（Lv1 最多 4 個貨架位，冷藏櫃、果蔬台、臨期區要 Lv2 才能買）
+ const POS=[[-6,-5.4],[-3.4,-5.4],[-.8,-5.4],[1.9,-5.4],[4.5,-5.4],[-5,-2],[-2.2,-2],[1.2,-2],[3.8,-2.2]];
+ const AMB=[['飲料·零食',['water','cola','chips']],['速食·零食',['noodle','chips','choco']],['零食·日用',['choco','chips','water']],['飲料·日用',['cola','water','noodle']],['零食·速食',['chips','noodle','choco']],['飲料·零食',['water','cola','chips']]];
+ const fixG=new THREE.Group();scene.add(fixG);
+ function mkVeg(g){const sg=new THREE.SphereGeometry(.13,8,6);for(let i=0;i<3;i++){box(.9,.45,.8,0xb98b5e,-1+i,.22,0,g);for(let k=0;k<7;k++){const m=new THREE.Mesh(sg,M([0xd63030,0x3fa65b,0xff8a3d][i]));m.position.set(-1+i+(k%3-1)*.25,.52,(Math.floor(k/3)-1)*.25);g.add(m)}}}
+ function setFixtures(types){while(fixG.children.length)fixG.remove(fixG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx){lbl[i].e.remove();lbl.splice(i,1)}
+  let a=0;types.forEach((t,i)=>{const[x,z]=POS[i];let g,tx;
+   if(t==='shelf'){const d=AMB[a++%AMB.length];g=shelf(0,0,0,d[1],a%2?OR:BL);tx=d[0]}
+   else if(t==='cold'){g=shelf(0,0,0,['milk','onigiri','milk'],BL,1);tx='冷藏櫃'}
+   else if(t==='produce'){g=new THREE.Group();mkVeg(g);tx='生鮮果蔬'}
+   else if(t==='clear'){g=new THREE.Group();box(1.8,.8,.9,0xd94452,0,.4,0,g);box(1.9,.08,1,0xe8b830,0,.84,0,g);for(let k=0;k<4;k++)box(.3,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][k%3],-.6+k*.4,1,0,g);tx='臨期 <em>7折</em>'}
+   else{g=new THREE.Group();box(2,.8,1,0xf4f6fa,0,.4,0,g);box(1.9,.08,.9,0xbfe3ff,0,.84,0,g,.5);for(let k=0;k<5;k++)box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][k%3],-.7+k*.35,.8,0,g);tx='冷凍櫃'}
+   g.position.set(x,0,z);fixG.add(g);label(tx,x,(t==='shelf'||t==='cold')?2.3:1.6,z,null,true)})}
  [1.2,4.4].forEach(x=>{scene.add(counter(x,3));const c=person([0xe05a4a,0x3fa65b][rnd(2)]);c.position.set(x,0,4.2);c.rotation.y=Math.PI;scene.add(c)});label('1號台',1.2,2.4,2.6);label('2號台',4.4,2.4,2.6);
- const opt={};const hot=new THREE.Group();hot.position.set(-6.4,0,4.9);box(2.4,.9,.9,0xb85c38,0,.45,0,hot);box(2.2,.5,.7,0xffb347,0,1.15,0,hot,.65);
+ const hot=new THREE.Group();hot.position.set(-6.4,0,4.9);box(2.4,.9,.9,0xb85c38,0,.45,0,hot);box(2.2,.5,.7,0xffb347,0,1.15,0,hot,.65);
  const dine=new THREE.Group();[-3.8,-1.6].forEach(x=>{box(1,.06,1,0xd9c3a5,x,.75,4.7,dine);box(.1,.72,.1,0x8a6a4a,x,.38,4.7,dine);[-.8,.8].forEach(o=>box(.4,.4,.4,0xe05a4a,x+o,.2,4.7,dine))});
  hot.visible=dine.visible=false;scene.add(hot,dine);opt.hot=hot;opt.dine=dine;label('熱食檔口',-6.4,2,4.9,()=>hot.visible);label('就餐區',-2.7,1.8,4.7,()=>dine.visible);
  [[-7.5,-5.4],[7.5,-5.4],[7.5,5.3]].forEach(([x,z])=>{const g=new THREE.Group();g.position.set(x,0,z);const c=new THREE.Mesh(new THREE.CylinderGeometry(.25,.2,.4,10),M(0xc0713d));c.position.y=.2;g.add(c);const l=new THREE.Mesh(new THREE.SphereGeometry(.45,8,6),M(0x3fa65b));l.position.y=.85;l.castShadow=true;g.add(l);scene.add(g)});
@@ -104,8 +110,8 @@ export function initStore(host){
   for(const k in goal)cur[k]+=(goal[k]-cur[k])*.08;place();
   cust.forEach(c=>{if(!c.m.visible)return;const p=c.m.position,dx=c.t[0]-p.x,dz=c.t[1]-p.z,d=Math.hypot(dx,dz);if(d<.15)c.t=WP[rnd(WP.length)];else{p.x+=dx/d*.025;p.z+=dz/d*.025;c.m.rotation.y=Math.atan2(dx,dz);p.y=Math.abs(Math.sin(t*9))*.04;const a=c.m.userData.arms;if(a){a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}}});
   R.render(scene,cam);cam.updateMatrixWorld();
-  lbl.forEach(l=>{if(l.vis&&!l.vis()){l.e.style.display='none';return}const p=l.v.clone().project(cam);if(p.z>1){l.e.style.display='none';return}
+  const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(l.vis&&!l.vis()){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*W.h;if(p.z>1||yy<hH||W.h<240){l.e.style.display='none';return}
    l.e.style.display='';l.e.style.transform=`translate(${(p.x*.5+.5)*W.w}px,${(-p.y*.5+.5)*W.h}px) translate(-50%,-100%)`})})();
- return{shelves:SH,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>cust.forEach(c=>c.m.visible=b),
-  focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=SH[+n.slice(5)];p={x:s.x,z:s.z+.5,az:.3,el:.7,dist:9}}if(p)Object.assign(goal,p)},
-  mark:i=>{if(i<0||!SH[i]){ring.visible=false;return}ring.visible=true;ring.position.x=SH[i].x;ring.position.z=SH[i].z+.3}}}
+ return{setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>cust.forEach(c=>c.m.visible=b),
+  focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=POS[+n.slice(5)];if(s)p={x:s[0],z:s[1]+.5,az:.3,el:.7,dist:9}}if(p)Object.assign(goal,p)},
+  mark:i=>{if(i<0||!POS[i]){ring.visible=false;return}ring.visible=true;ring.position.x=POS[i][0];ring.position.z=POS[i][1]+.3}}}
