@@ -33,7 +33,7 @@ function person(sh,o={}){const g=new THREE.Group(),sk=[0xf1c9a5,0xc68e6a,0x8d5a3
  return g}
 function shelf(x,z,ry,ids,top,glass){const g=new THREE.Group(),fc=glass?0x3a6ea5:0x9aa5b8;g.position.set(x,0,z);g.rotation.y=ry;
  box(2.3,1.8,.08,fc,0,.9,-.3,g);box(.08,1.8,.65,fc,-1.15,.9,0,g);box(.08,1.8,.65,fc,1.15,.9,0,g);box(2.4,.18,.8,top,0,1.86,0,g);box(2.4,.05,.82,0xffffff,0,1.76,0,g);
- for(let l=0;l<4;l++){box(2.3,.06,.65,0xf4f4f8,0,.08+l*.52,0,g);box(2.3,.04,.04,top,0,.12+l*.52,.32,g);if(l<3)for(let i=0;i<5;i++)prod(ids[l%ids.length],g,-.88+i*.44,.11+l*.52,.06)}
+ for(let l=0;l<4;l++){box(2.3,.06,.65,0xf4f4f8,0,.08+l*.52,0,g);box(2.3,.04,.04,top,0,.12+l*.52,.32,g);if(l<3)for(let i=0;i<5;i++)REG.push({id:ids[l%ids.length],k:i,g:prod(ids[l%ids.length],g,-.88+i*.44,.11+l*.52,.06)})}
  if(glass)box(2.2,1.6,.03,0xbfe3ff,0,.9,.33,g,.25);return g}
 function counter(x,z){const g=new THREE.Group();g.position.set(x,0,z);
  box(2.2,.9,.9,0x3a404c,0,.45,0,g);box(2.2,.06,.95,0xe9edf2,0,.92,0,g);box(1.9,.06,.7,0x22262e,-.1,.96,0,g);for(let i=-4;i<=4;i++)box(.04,.065,.68,0x343a46,-.1+i*.2,.96,0,g);
@@ -46,7 +46,7 @@ function rack(sc,x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotat
  [-1.1,1.1].forEach(px=>[-.35,.35].forEach(pz=>box(.08,2.2,.08,0x3a5fa0,px,1.1,pz,g)));
  for(let l=0;l<3;l++){box(2.3,.06,.8,0xe6e8ee,0,.2+l*.7,0,g);for(let i=0;i<4;i++)box(.5,.4,.55,0xc8955e,-.8+i*.55,.43+l*.7,0,g),box(.18,.1,.02,[0xd63030,0x2d7ff9,0xe8b830][(i+l)%3],-.8+i*.55,.45+l*.7,.29,g)}
  sc.add(g)}
-const SHAPED=new Set(['water','cola','chips','noodle','biscuit','spicy','tissue','bread','milk','yogurt','beer','sausage','choco']);let IR;const IC={};
+const REG=[];const SHAPED=new Set(['water','cola','chips','noodle','biscuit','spicy','tissue','bread','milk','yogurt','beer','sausage','choco']);let IR;const IC={};
 function icon(id){if(!SHAPED.has(id))return null;if(IC[id])return IC[id];
  if(!IR){IR=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});IR.setSize(96,96);IR.setClearColor(0,0)}
  const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0xbbaa99,3.2));const d=new THREE.DirectionalLight(0xffffff,1.6);d.position.set(1,2,3);sc.add(d);
@@ -90,14 +90,15 @@ export function initStore(host){
  const AMB=[['飲料·零食',['water','cola','chips']],['速食·零食',['noodle','biscuit','spicy']],['零食·日用',['tissue','bread','chips']],['飲料·日用',['cola','water','noodle']],['零食·速食',['biscuit','chips','spicy']],['飲料·零食',['water','cola','bread']]];
  const fixG=new THREE.Group();scene.add(fixG);
  function mkVeg(g){const sg=new THREE.SphereGeometry(.13,8,6);for(let i=0;i<3;i++){box(.9,.45,.8,0xb98b5e,-1+i,.22,0,g);for(let k=0;k<7;k++){const m=new THREE.Mesh(sg,M([0xd63030,0x3fa65b,0xff8a3d][i]));m.position.set(-1+i+(k%3-1)*.25,.52,(Math.floor(k/3)-1)*.25);g.add(m)}}}
- function setFixtures(types){while(fixG.children.length)fixG.remove(fixG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx===true){lbl[i].e.remove();lbl.splice(i,1)}
+ let stk={};function applyStock(){REG.forEach(r=>{const f=stk[r.id];r.g.visible=f===undefined||r.k<Math.ceil(f*5)})}
+ function setFixtures(types){REG.length=0;while(fixG.children.length)fixG.remove(fixG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx===true){lbl[i].e.remove();lbl.splice(i,1)}
   let a=0;types.forEach((t,i)=>{const[x,z]=POS[i];let g,tx;
    if(t==='shelf'){const d=AMB[a++%AMB.length];g=shelf(0,0,0,d[1],a%2?OR:BL);tx=d[0]}
    else if(t==='cold'){g=shelf(0,0,0,['milk','yogurt','beer'],BL,1);tx='冷藏櫃'}
    else if(t==='produce'){g=new THREE.Group();mkVeg(g);tx='生鮮果蔬'}
    else if(t==='clear'){g=new THREE.Group();box(1.8,.8,.9,0xd94452,0,.4,0,g);box(1.9,.08,1,0xe8b830,0,.84,0,g);for(let k=0;k<4;k++)box(.3,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][k%3],-.6+k*.4,1,0,g);tx='臨期 <em>7折</em>'}
    else{g=new THREE.Group();box(2,.8,1,0xf4f6fa,0,.4,0,g);box(1.9,.08,.9,0xbfe3ff,0,.84,0,g,.5);for(let k=0;k<5;k++)box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][k%3],-.7+k*.35,.8,0,g);tx='冷凍櫃'}
-   g.position.set(x,0,z);fixG.add(g);label(tx,x,(t==='shelf'||t==='cold')?2.3:1.6,z,null,true)})}
+   g.position.set(x,0,z);fixG.add(g);label(tx,x,(t==='shelf'||t==='cold')?2.3:1.6,z,null,true)});applyStock()}
  const CPOS=[1.2,4.4,-2],cG=new THREE.Group();scene.add(cG);let lock=false,me=null;
  function setCounters(reg,cashiers){while(cG.children.length)cG.remove(cG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx==='c'){lbl[i].e.remove();lbl.splice(i,1)}
   for(let i=0;i<Math.min(reg,CPOS.length);i++){const x=CPOS[i];cG.add(counter(x,3));const p=i===0?person(0x2d7ff9,{hat:2,cap:0x2d7ff9,vest:0xffffff}):(i<=cashiers?person(0xd94452,{hat:2,cap:0xd94452,vest:0xffffff}):null);if(p){p.position.set(x,0,2.05);cG.add(p);if(i===0)me=p}label((i+1)+'號台',x,2.4,2.6,null,'c')}if(me)me.visible=!lock}
@@ -116,23 +117,32 @@ export function initStore(host){
  const WP=[[-5.5,.6],[-2.5,.6],[1.5,-.8],[5,-.3],[6.5,1.8],[0,1.6],[-6.5,-.4],[3.4,.4],[-3,1.8]];
  // 顧客從外面人行道走來，進門逛店，再走出門離開
  const SW=7.6,DOOR=[6.2,6.9],IN=[6.2,5],cust=[],COL=[0xe05a4a,0x3fa65b,0x6a5acd,0xf2a33a,0x2d7ff9,0xc2185b];
- function spawnCustomer(){if(cust.length>=12)return;const fl=Math.random()<.5,m=person(COL[rnd(6)]);m.position.set(fl?-24:24,0,SW+(Math.random()-.5)*.6);scene.add(m);
-  const path=[[DOOR[0]+(Math.random()-.5)*.8,SW],DOOR,IN];for(let i=0,n=2+rnd(3);i<n;i++)path.push([...WP[rnd(WP.length)],1.2]);path.push(IN,DOOR,[DOOR[0]+(fl?-8:8),SW],[fl?-27:27,SW]);cust.push({m,path,i:0,wait:0})}
- function leaveAll(){cust.forEach(c=>{c.path=[DOOR,[DOOR[0]+8,SW],[27,SW]];c.i=0;c.wait=0})}
+ let cb=null;
+ const LX=6.5,LANE=.6,AIS=-3.2,PQ=[6.3,5.5],EXX=[[2.9,4],[5.8,4],[6.2,5.5]];
+ // 走道：右側走廊 → 中間橫向走道 → 各貨架前；所有路線都避開貨架、收銀台和牆
+ const upp=i=>{const[x,z]=POS[i];return z<-3?[[x,-4.4],[x,AIS],[LX,AIS],[LX,LANE]]:[[x,-.95],[x,LANE],[LX,LANE]]},dwn=i=>upp(i).reverse().slice(1),exitPath=()=>[...EXX.map(p=>[...p]),[...DOOR],[DOOR[0]+8,SW],[27,SW]];
+ function between(a,b){const[ax,az]=POS[a],[bx,bz]=POS[b],ra=az<-3,rb=bz<-3;if(ra&&rb)return[[ax,AIS],[bx,AIS],[bx,-4.4]];if(!ra&&!rb)return[[ax,LANE],[bx,LANE],[bx,-.95]];return[...upp(a).slice(1),...dwn(b)]}
+ function spawnCustomer(cid,stops){if(cust.length>=12||!stops||!stops.length)return false;const fl=Math.random()<.5,m=person(COL[rnd(6)]);m.position.set(fl?-24:24,0,SW+(Math.random()-.5)*.6);scene.add(m);
+  const path=[[DOOR[0]+(Math.random()-.5)*.8,SW],[...DOOR],[...IN],[LX,3.4],[LX,LANE]];let prev=-1;
+  stops.forEach(i=>{(prev<0?dwn(i):between(prev,i)).forEach(p=>path.push([p[0],p[1]]));const l=path[path.length-1];l[2]=1.6+Math.random();l[3]={s:i};prev=i});
+  if(prev>=0)upp(prev).slice(1).forEach(p=>path.push([p[0],p[1]]));path.push([LX,3.4],[PQ[0],PQ[1],0,'q']);cust.push({m,path,i:0,wait:0,cid});return true}
+ function leaveAll(){cust.forEach(c=>scene.remove(c.m));cust.length=0}
  const ring=new THREE.Mesh(new THREE.RingGeometry(1.3,1.5,32),new THREE.MeshBasicMaterial({color:0xffc400,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;ring.visible=false;scene.add(ring);
  // 收銀台前的顧客、排隊、傳送帶商品（點商品掃碼）
- const QS=[[1.2,4.9],[1.2,5.7],[2.4,5.3],[0,5.3]],TILL=[1.2,3.95],beltG=new THREE.Group(),rc=new THREE.Raycaster(),v2=new THREE.Vector2();scene.add(beltG);
+ const QS=[[1.2,4.6],[2.05,4.6],[2.9,4.6],[3.75,4.6],[4.6,4.6],[5.45,4.6]],TILL=[1.2,3.95],beltG=new THREE.Group(),rc=new THREE.Raycaster(),v2=new THREE.Vector2();scene.add(beltG);
  let belt=[],pick=null,till=null,tillId=0,qm=[],qd=false,dn=null;
  const mkp=()=>{const m=person(COL[rnd(6)]);m.position.set(DOOR[0],0,DOOR[1]);scene.add(m);return m};
  function setTill(id){if(id===tillId)return;tillId=id;
-  if(till){cust.push({m:till,path:[[TILL[0],5.2],DOOR,[DOOR[0]+8,SW],[27,SW]],i:0,wait:0});till=null}
-  if(id){till=qm.length?qm.shift():mkp();till.userData.tg=TILL;qd=true}}
- function setQueue(n){n=Math.min(4,n);if(n===qm.length&&!qd)return;qd=false;while(qm.length>n)scene.remove(qm.pop());while(qm.length<n)qm.push(mkp());qm.forEach((m,i)=>m.userData.tg=QS[i])}
+  if(till){cust.push({m:till,path:exitPath(),i:0,wait:0});till=null}
+  if(id){const k=qm.findIndex(m=>m.userData.cid===id);till=k>=0?qm.splice(k,1)[0]:mkp();till.userData.tg=TILL}}
+ function leave(cid){const k=qm.findIndex(m=>m.userData.cid===cid);if(k<0)return;cust.push({m:qm.splice(k,1)[0],path:exitPath(),i:0,wait:0})}
+ function arrive(c,tag){if(tag==='q'){const ok=cb&&cb.arrive(c.cid),k=cust.indexOf(c);if(ok){if(k>=0)cust.splice(k,1);c.m.userData.cid=c.cid;qm.push(c.m)}else{c.path=exitPath();c.i=0;c.wait=0}}
+  else{c.m.rotation.y=Math.PI;const a=c.m.userData.arms;a[0].rotation.x=a[1].rotation.x=0;if(cb)cb.take(c.cid,tag.s)}}
  function setBelt(ids){belt.forEach(b=>beltG.remove(b.g));belt=ids.map((id,i)=>{const g=new THREE.Group();prod(id,g,0,0,0);g.position.set(CPOS[0]-.95+i*.34,.99,3+(i%2?.1:-.1));g.scale.setScalar(1.25);g.rotation.y=(i%3-1)*.4;
   const hit=new THREE.Mesh(new THREE.BoxGeometry(.26,.6,.5),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=.2;hit.userData.i=i;g.add(hit);beltG.add(g);return{g,hit,s:false,t:0}})}
  function beltScan(i){const b=belt[i];if(b&&b.s===false)b.s=true}
  function beltScanAll(){belt.forEach((b,k)=>setTimeout(()=>beltScan(k),k*110))}
- function tick(t){[till,...qm].forEach(m=>{const g=m&&m.userData.tg;if(!g)return;const dx=g[0]-m.position.x,dz=g[1]-m.position.z,d=Math.hypot(dx,dz),a=m.userData.arms;
+ function tick(t){qm.forEach((m,i)=>m.userData.tg=QS[Math.min(i,QS.length-1)]);[till,...qm].forEach(m=>{const g=m&&m.userData.tg;if(!g)return;const dx=g[0]-m.position.x,dz=g[1]-m.position.z,d=Math.hypot(dx,dz),a=m.userData.arms;
    if(d>.08){m.position.x+=dx/d*.05;m.position.z+=dz/d*.05;m.rotation.y=Math.atan2(dx,dz);a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}else{m.rotation.y=Math.PI;a[0].rotation.x=a[1].rotation.x=0}});
   belt.forEach(b=>{if(b.s!==true)return;b.t+=.05;b.g.position.x+=(CPOS[0]+.6-b.g.position.x)*.2;b.g.position.y=.99+Math.sin(b.t*3)*.12;b.g.scale.multiplyScalar(.93);if(b.t>1){beltG.remove(b.g);b.s=2}})}
  R.domElement.addEventListener('pointerdown',e=>{dn={x:e.clientX,y:e.clientY}});
@@ -155,10 +165,10 @@ export function initStore(host){
  let t=0;(function loop(){requestAnimationFrame(loop);t+=.016;
   for(const k in goal)cur[k]+=(goal[k]-cur[k])*.08;place();
   for(let i=cust.length-1;i>=0;i--){const c=cust[i],p=c.m.position;if(c.wait>0){c.wait-=.016;continue}const pt=c.path[c.i];if(!pt){scene.remove(c.m);cust.splice(i,1);continue}
-   const dx=pt[0]-p.x,dz=pt[1]-p.z,d=Math.hypot(dx,dz);if(d<.12){c.wait=pt[2]||0;c.i++}else{p.x+=dx/d*.045;p.z+=dz/d*.045;c.m.rotation.y=Math.atan2(dx,dz);p.y=Math.abs(Math.sin(t*9))*.04;const a=c.m.userData.arms;if(a){a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}}}
+   const dx=pt[0]-p.x,dz=pt[1]-p.z,d=Math.hypot(dx,dz);if(d<.12){c.wait=pt[2]||0;c.i++;if(pt[3])arrive(c,pt[3])}else{p.x+=dx/d*.045;p.z+=dz/d*.045;c.m.rotation.y=Math.atan2(dx,dz);p.y=Math.abs(Math.sin(t*9))*.04;const a=c.m.userData.arms;if(a){a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}}}
   tick(t);R.render(scene,cam);cam.updateMatrixWorld();
   const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(lock||(l.vis&&!l.vis())){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*W.h;if(p.z>1||yy<hH||W.h<240){l.e.style.display='none';return}
    l.e.style.display='';l.e.style.transform=`translate(${(p.x*.5+.5)*W.w}px,${(-p.y*.5+.5)*W.h}px) translate(-50%,-100%)`})})();
- return{setTill,setQueue,setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
+ return{setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
   focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=POS[+n.slice(5)];if(s)p={x:s[0],z:s[1]+.5,az:.3,el:.7,dist:9}}lock=n==='till';if(me)me.visible=!lock;if(p)Object.assign(goal,{ly:.6},p)},
   mark:i=>{if(i<0||!POS[i]){ring.visible=false;return}ring.visible=true;ring.position.x=POS[i][0];ring.position.z=POS[i][1]+.3}}}
