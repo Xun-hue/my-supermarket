@@ -85,19 +85,19 @@ export function initStore(host){
  const lbl=[],W={w:1,h:1};
  function label(html,x,y,z,vis,fx){const e=document.createElement('div');e.className='lb';e.innerHTML=html;host.appendChild(e);lbl.push({e,v:new THREE.Vector3(x,y,z),vis,fx})}
  label('倉庫 →',-8.1,2.75,-.5);label('冷藏庫',-14,2.7,0,()=>coldroom.visible);
- // 賣場上的貨架／櫃台：由玩家買了什麼決定（Lv1 最多 4 個貨架位，冷藏櫃、果蔬台、臨期區要 Lv2 才能買）
+ // 賣場上的貨架／櫃台：由玩家買了什麼決定（Lv1 最多 4 個貨架位，冷藏櫃、果蔬台、即期區要 Lv2 才能買）
  const POS=[[-6,-5.4],[-3.4,-5.4],[-.8,-5.4],[1.9,-5.4],[4.5,-5.4],[-5,-2],[-2.2,-2],[1.2,-2],[3.8,-2.2]];
  const AMB=[['飲料·零食',['water','cola','chips']],['速食·零食',['noodle','biscuit','spicy']],['零食·日用',['tissue','bread','chips']],['飲料·日用',['cola','water','noodle']],['零食·速食',['biscuit','chips','spicy']],['飲料·零食',['water','cola','bread']]];
  const fixG=new THREE.Group();scene.add(fixG);
- function mkVeg(g){const sg=new THREE.SphereGeometry(.13,8,6);for(let i=0;i<3;i++){box(.9,.45,.8,0xb98b5e,-1+i,.22,0,g);for(let k=0;k<7;k++){const m=new THREE.Mesh(sg,M([0xd63030,0x3fa65b,0xff8a3d][i]));m.position.set(-1+i+(k%3-1)*.25,.52,(Math.floor(k/3)-1)*.25);g.add(m)}}}
- let stk={};function applyStock(){REG.forEach(r=>{const f=stk[r.id];r.g.visible=f===undefined||r.k<Math.ceil(f*5)})}
+ function mkVeg(g){const sg=new THREE.SphereGeometry(.13,8,6);for(let i=0;i<3;i++){box(.9,.45,.8,0xb98b5e,-1+i,.22,0,g);for(let k=0;k<7;k++){const m=new THREE.Mesh(sg,M([0xd63030,0x3fa65b,0xff8a3d][i]));m.position.set(-1+i+(k%3-1)*.25,.52,(Math.floor(k/3)-1)*.25);g.add(m);REG.push({id:'_produce',k,n:7,g:m})}}}
+ let cdD=7,stk={};function applyStock(){REG.forEach(r=>{const f=stk[r.id];r.g.visible=f===undefined||r.k<Math.ceil(f*(r.n||5))})}
  function setFixtures(types){REG.length=0;while(fixG.children.length)fixG.remove(fixG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx===true){lbl[i].e.remove();lbl.splice(i,1)}
   let a=0;types.forEach((t,i)=>{const[x,z]=POS[i];let g,tx;
    if(t==='shelf'){const d=AMB[a++%AMB.length];g=shelf(0,0,0,d[1],a%2?OR:BL);tx=d[0]}
    else if(t==='cold'){g=shelf(0,0,0,['milk','yogurt','beer'],BL,1);tx='冷藏櫃'}
    else if(t==='produce'){g=new THREE.Group();mkVeg(g);tx='生鮮果蔬'}
-   else if(t==='clear'){g=new THREE.Group();box(1.8,.8,.9,0xd94452,0,.4,0,g);box(1.9,.08,1,0xe8b830,0,.84,0,g);for(let k=0;k<4;k++)box(.3,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][k%3],-.6+k*.4,1,0,g);tx='臨期 <em>7折</em>'}
-   else{g=new THREE.Group();box(2,.8,1,0xf4f6fa,0,.4,0,g);box(1.9,.08,.9,0xbfe3ff,0,.84,0,g,.5);for(let k=0;k<5;k++)box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][k%3],-.7+k*.35,.8,0,g);tx='冷凍櫃'}
+   else if(t==='clear'){g=new THREE.Group();box(1.8,.8,.9,0xd94452,0,.4,0,g);box(1.9,.08,1,0xe8b830,0,.84,0,g);for(let k=0;k<6;k++)REG.push({id:'_clear',k,n:6,g:box(.26,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][k%3],-.75+k*.3,1,0,g)});tx='即期 <em class=cd>'+cdD+'折</em>'}
+   else{g=new THREE.Group();box(2,.8,1,0xf4f6fa,0,.4,0,g);box(1.9,.08,.9,0xbfe3ff,0,.84,0,g,.5);for(let k=0;k<5;k++)REG.push({id:'_freezer',k,n:5,g:box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][k%3],-.7+k*.35,.8,0,g)});tx='冷凍櫃'}
    g.position.set(x,0,z);fixG.add(g);label(tx,x,(t==='shelf'||t==='cold')?2.3:1.6,z,null,true)});applyStock()}
  const CPOS=[1.2,4.4,-2],cG=new THREE.Group();scene.add(cG);let lock=false,me=null;
  function setCounters(reg,cashiers){while(cG.children.length)cG.remove(cG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx==='c'){lbl[i].e.remove();lbl.splice(i,1)}
@@ -169,6 +169,6 @@ export function initStore(host){
   tick(t);R.render(scene,cam);cam.updateMatrixWorld();
   const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(lock||(l.vis&&!l.vis())){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*W.h;if(p.z>1||yy<hH||W.h<240){l.e.style.display='none';return}
    l.e.style.display='';l.e.style.transform=`translate(${(p.x*.5+.5)*W.w}px,${(-p.y*.5+.5)*W.h}px) translate(-50%,-100%)`})})();
- return{setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
+ return{setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
   focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=POS[+n.slice(5)];if(s)p={x:s[0],z:s[1]+.5,az:.3,el:.7,dist:9}}lock=n==='till';if(me)me.visible=!lock;if(p)Object.assign(goal,{ly:.6},p)},
   mark:i=>{if(i<0||!POS[i]){ring.visible=false;return}ring.visible=true;ring.position.x=POS[i][0];ring.position.z=POS[i][1]+.3}}}
