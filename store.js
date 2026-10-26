@@ -41,11 +41,17 @@ function counter(x,z){const g=new THREE.Group();g.position.set(x,0,z);
  box(.06,1.1,.8,0x9aa5b8,-1.1,1.4,0,g,.5);box(2.2,.1,.1,0x7a2a26,0,.9,.46,g);
  [0,1,2].forEach(i=>box(.45,.1,.32,0xe05a4a,-.55,1.05+i*.07,-.2,g));box(.05,.3,.05,0x9aa5b8,.35,1.15,.38,g);box(.26,.22,.03,0x2d7ff9,.35,1.3,.38,g);
  [-1.25,1.25].forEach(px=>box(.06,.9,.06,0x9aa5b8,px,.45,.75,g));box(2.5,.05,.05,0xd94452,0,.85,.75,g);
- const c=person(0xd94452,{hat:2,cap:0xd94452,vest:0xffffff});c.position.set(0,0,-.95);g.add(c);return g}
+ return g}
 function rack(sc,x,z,ry){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;
  [-1.1,1.1].forEach(px=>[-.35,.35].forEach(pz=>box(.08,2.2,.08,0x3a5fa0,px,1.1,pz,g)));
  for(let l=0;l<3;l++){box(2.3,.06,.8,0xe6e8ee,0,.2+l*.7,0,g);for(let i=0;i<4;i++)box(.5,.4,.55,0xc8955e,-.8+i*.55,.43+l*.7,0,g),box(.18,.1,.02,[0xd63030,0x2d7ff9,0xe8b830][(i+l)%3],-.8+i*.55,.45+l*.7,.29,g)}
  sc.add(g)}
+const SHAPED=new Set(['water','cola','chips','noodle','biscuit','spicy','tissue','bread','milk','yogurt','beer','sausage','choco']);let IR;const IC={};
+function icon(id){if(!SHAPED.has(id))return null;if(IC[id])return IC[id];
+ if(!IR){IR=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});IR.setSize(96,96);IR.setClearColor(0,0)}
+ const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0xbbaa99,1.15));const d=new THREE.DirectionalLight(0xffffff,.6);d.position.set(1,2,3);sc.add(d);
+ const g=new THREE.Group();prod(id,g,0,0,0);g.scale.setScalar(2.3);g.position.y=-.38;g.rotation.y=-.5;sc.add(g);
+ const c=new THREE.PerspectiveCamera(30,1,.1,10);c.position.set(0,.15,2.3);c.lookAt(0,0,0);IR.render(sc,c);return IC[id]=IR.domElement.toDataURL()}
 export function initStore(host){
  const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio||1,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;host.prepend(R.domElement);
  const scene=new THREE.Scene();scene.background=new THREE.Color(0xbfe3d0);
@@ -84,7 +90,7 @@ export function initStore(host){
  const AMB=[['飲料·零食',['water','cola','chips']],['速食·零食',['noodle','biscuit','spicy']],['零食·日用',['tissue','bread','chips']],['飲料·日用',['cola','water','noodle']],['零食·速食',['biscuit','chips','spicy']],['飲料·零食',['water','cola','bread']]];
  const fixG=new THREE.Group();scene.add(fixG);
  function mkVeg(g){const sg=new THREE.SphereGeometry(.13,8,6);for(let i=0;i<3;i++){box(.9,.45,.8,0xb98b5e,-1+i,.22,0,g);for(let k=0;k<7;k++){const m=new THREE.Mesh(sg,M([0xd63030,0x3fa65b,0xff8a3d][i]));m.position.set(-1+i+(k%3-1)*.25,.52,(Math.floor(k/3)-1)*.25);g.add(m)}}}
- function setFixtures(types){while(fixG.children.length)fixG.remove(fixG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx){lbl[i].e.remove();lbl.splice(i,1)}
+ function setFixtures(types){while(fixG.children.length)fixG.remove(fixG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx===true){lbl[i].e.remove();lbl.splice(i,1)}
   let a=0;types.forEach((t,i)=>{const[x,z]=POS[i];let g,tx;
    if(t==='shelf'){const d=AMB[a++%AMB.length];g=shelf(0,0,0,d[1],a%2?OR:BL);tx=d[0]}
    else if(t==='cold'){g=shelf(0,0,0,['milk','yogurt','beer'],BL,1);tx='冷藏櫃'}
@@ -92,7 +98,10 @@ export function initStore(host){
    else if(t==='clear'){g=new THREE.Group();box(1.8,.8,.9,0xd94452,0,.4,0,g);box(1.9,.08,1,0xe8b830,0,.84,0,g);for(let k=0;k<4;k++)box(.3,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][k%3],-.6+k*.4,1,0,g);tx='臨期 <em>7折</em>'}
    else{g=new THREE.Group();box(2,.8,1,0xf4f6fa,0,.4,0,g);box(1.9,.08,.9,0xbfe3ff,0,.84,0,g,.5);for(let k=0;k<5;k++)box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][k%3],-.7+k*.35,.8,0,g);tx='冷凍櫃'}
    g.position.set(x,0,z);fixG.add(g);label(tx,x,(t==='shelf'||t==='cold')?2.3:1.6,z,null,true)})}
- [1.2,4.4].forEach(x=>{scene.add(counter(x,3));const c=person([0xe05a4a,0x3fa65b][rnd(2)]);c.position.set(x,0,4.2);c.rotation.y=Math.PI;scene.add(c)});label('1號台',1.2,2.4,2.6);label('2號台',4.4,2.4,2.6);
+ const CPOS=[1.2,4.4,-2],cG=new THREE.Group();scene.add(cG);
+ function setCounters(reg,cashiers){while(cG.children.length)cG.remove(cG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx==='c'){lbl[i].e.remove();lbl.splice(i,1)}
+  for(let i=0;i<Math.min(reg,CPOS.length);i++){const x=CPOS[i];cG.add(counter(x,3));const p=i===0?person(0x2d7ff9,{hat:2,cap:0x2d7ff9,vest:0xffffff}):(i<=cashiers?person(0xd94452,{hat:2,cap:0xd94452,vest:0xffffff}):null);if(p){p.position.set(x,0,2.05);cG.add(p)}label((i+1)+'號台',x,2.4,2.6,null,'c')}}
+ setCounters(2,0);
  const hot=new THREE.Group();hot.position.set(-6.4,0,4.9);box(2.4,.9,.9,0xb85c38,0,.45,0,hot);box(2.2,.5,.7,0xffb347,0,1.15,0,hot,.65);
  const dine=new THREE.Group();
  box(6.7,.1,8.2,0xe6d3b8,11.55,-.05,-.4,dine);box(.5,.02,2,0xe6d3b8,8.1,.01,-.5,dine);
@@ -105,7 +114,11 @@ export function initStore(host){
  [[-7.5,-5.4],[7.5,-5.4],[7.5,5.3]].forEach(([x,z])=>{const g=new THREE.Group();g.position.set(x,0,z);const c=new THREE.Mesh(new THREE.CylinderGeometry(.25,.2,.4,10),M(0xc0713d));c.position.y=.2;g.add(c);const l=new THREE.Mesh(new THREE.SphereGeometry(.45,8,6),M(0x3fa65b));l.position.y=.85;l.castShadow=true;g.add(l);scene.add(g)});
  // 逛店顧客（開門後才出現）
  const WP=[[-5.5,.6],[-2.5,.6],[1.5,-.8],[5,-.3],[6.5,1.8],[0,1.6],[-6.5,-.4],[3.4,.4],[-3,1.8]];
- const cust=Array.from({length:6},(_,i)=>{const m=person([0xe05a4a,0x3fa65b,0x6a5acd,0xf2a33a,0x2d7ff9,0xc2185b][i]);const w=WP[rnd(WP.length)];m.position.set(w[0],0,w[1]);m.visible=false;scene.add(m);return{m,t:WP[rnd(WP.length)]}});
+ // 顧客從外面人行道走來，進門逛店，再走出門離開
+ const SW=7.6,DOOR=[6.2,6.9],IN=[6.2,5],cust=[],COL=[0xe05a4a,0x3fa65b,0x6a5acd,0xf2a33a,0x2d7ff9,0xc2185b];
+ function spawnCustomer(){if(cust.length>=12)return;const fl=Math.random()<.5,m=person(COL[rnd(6)]);m.position.set(fl?-24:24,0,SW+(Math.random()-.5)*.6);scene.add(m);
+  const path=[[DOOR[0]+(Math.random()-.5)*.8,SW],DOOR,IN];for(let i=0,n=2+rnd(3);i<n;i++)path.push([...WP[rnd(WP.length)],1.2]);path.push(IN,DOOR,[DOOR[0]+(fl?-8:8),SW],[fl?-27:27,SW]);cust.push({m,path,i:0,wait:0})}
+ function leaveAll(){cust.forEach(c=>{c.path=[DOOR,[DOOR[0]+8,SW],[27,SW]];c.i=0;c.wait=0})}
  const ring=new THREE.Mesh(new THREE.RingGeometry(1.3,1.5,32),new THREE.MeshBasicMaterial({color:0xffc400,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;ring.visible=false;scene.add(ring);
  // 鏡頭：預設位置會順順滑過去；單指旋轉、雙指縮放
  const PRE={all:{x:-1,z:.5,az:.62,el:.9,dist:25},cash:{x:2.8,z:3.4,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:-1,z:-4,az:.35,el:.75,dist:16},food:{x:-5,z:4.5,az:.5,el:.85,dist:13},dine:{x:10,z:-.4,az:.55,el:.85,dist:17}};
@@ -121,10 +134,11 @@ export function initStore(host){
  new ResizeObserver(fit).observe(host);fit();
  let t=0;(function loop(){requestAnimationFrame(loop);t+=.016;
   for(const k in goal)cur[k]+=(goal[k]-cur[k])*.08;place();
-  cust.forEach(c=>{if(!c.m.visible)return;const p=c.m.position,dx=c.t[0]-p.x,dz=c.t[1]-p.z,d=Math.hypot(dx,dz);if(d<.15)c.t=WP[rnd(WP.length)];else{p.x+=dx/d*.025;p.z+=dz/d*.025;c.m.rotation.y=Math.atan2(dx,dz);p.y=Math.abs(Math.sin(t*9))*.04;const a=c.m.userData.arms;if(a){a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}}});
+  for(let i=cust.length-1;i>=0;i--){const c=cust[i],p=c.m.position;if(c.wait>0){c.wait-=.016;continue}const pt=c.path[c.i];if(!pt){scene.remove(c.m);cust.splice(i,1);continue}
+   const dx=pt[0]-p.x,dz=pt[1]-p.z,d=Math.hypot(dx,dz);if(d<.12){c.wait=pt[2]||0;c.i++}else{p.x+=dx/d*.045;p.z+=dz/d*.045;c.m.rotation.y=Math.atan2(dx,dz);p.y=Math.abs(Math.sin(t*9))*.04;const a=c.m.userData.arms;if(a){a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}}}
   R.render(scene,cam);cam.updateMatrixWorld();
   const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(l.vis&&!l.vis()){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*W.h;if(p.z>1||yy<hH||W.h<240){l.e.style.display='none';return}
    l.e.style.display='';l.e.style.transform=`translate(${(p.x*.5+.5)*W.w}px,${(-p.y*.5+.5)*W.h}px) translate(-50%,-100%)`})})();
- return{setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>cust.forEach(c=>c.m.visible=b),
+ return{setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
   focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=POS[+n.slice(5)];if(s)p={x:s[0],z:s[1]+.5,az:.3,el:.7,dist:9}}if(p)Object.assign(goal,p)},
   mark:i=>{if(i<0||!POS[i]){ring.visible=false;return}ring.visible=true;ring.position.x=POS[i][0];ring.position.z=POS[i][1]+.3}}}
