@@ -9,7 +9,7 @@ const CATALOG=[['water','礦泉水','💧',.9,2,0,1,24,'瓶'],['cola','可樂','
  ['apple','蘋果','🍎',1.8,3.5,1,3,20,'顆'],['banana','香蕉','🍌',1.5,3,1,3,20,'根'],['tomato','番茄','🍅',1.2,2.5,1,3,20,'顆'],['egg','雞蛋','🥚',4,6.5,1,3,12,'盒'],['icecream','冰淇淋','🍦',2,4,1,3,24,'支'],['dumpling','冷凍水餃','🥟',5,8.5,1,3,12,'袋'],['strawberry','草莓','🍓',4.5,8,1,3,10,'盒']];
 const P=CATALOG.map(([id,n,e,c,p,cold,lv,pack,un])=>({id,n,e,cost:nt(c),cb:nt(c),old:nt(c),price:nt(p),mkt:nt(p),cold:!!cold,lv,pack,u:un,wh:(!cold&&lv===1)?pack:0,shelf:(!cold&&lv===1)?8:0,want:0}));
 const A=()=>P.filter(p=>p.lv<=S.lv);
-const S={money:4500,star:80,visit:0,lv:1,min:480,day:1,phase:'prep',orders:[],qOpen:false,total:0,hist:[],member:{own:false,count:0,disc:95},wn:['☀️','晴',1.1],expect:60,stat:null,daily:[],tab:'cash',sub:'store',pm:'cash',sel:-1,own:{},eq:{},staff:{},kb:'',get ambCap(){return Math.round(SPEC(this.lv).cap*(1+.4*(this.eq.whx||0)))},get coldCap(){return[0,2000,5000,12000][this.eq.cold||0]},fix:['shelf','shelf','shelf','shelf'],queue:[],pend:[],cur:null,buyerMid:true,lastSold:{}};
+const S={money:4500,star:80,visit:0,lv:1,min:480,day:1,phase:'prep',orders:[],qOpen:false,total:0,hist:[],member:{own:false,count:0,disc:95},wn:['☀️','晴',1.1],expect:60,stat:null,daily:[],tab:'cash',sub:'store',pm:'cash',sel:-1,own:{},eq:{},staff:{},kb:'',get ambCap(){return Math.round(SPEC(this.lv).cap*(1+.4*(this.eq.whx||0)))},get coldCap(){return[0,2000,5000,12000][this.eq.cold||0]},fix:['shelf','shelf','shelf','shelf'],queue:[],pend:[],cur:null,buyerMid:true,days:[]};
 const newStat=()=>({err:0,ct:0,cnt:{},s0:S.star,served:0,total:0,perfect:0,gross:0,rev:0,cogs:0,memberDisc:0,newMember:0,lost:0,thief:0,caught:0,hot:0,hotRev:0,charge:0,best:'',bestN:0});S.stat=newStat();
 const RATE={95:.04,90:.08,85:.13},UPC=[6750,17100,36000,67500,117000,180000,270000,405000];
 const wk=()=>['一','二','三','四','五','六','日'][(S.day+1)%7];
@@ -86,9 +86,11 @@ function settle(){const st=S.stat,sim=!st.served;if(sim)daySim();if(!st.best){co
 // ---- 收銀流程：顧客排隊 → 掃碼 → 收款（現金找零／行動支付／刷卡）----
 const CB=[];let TID=0;
 const NEED={milk:'cold',yogurt:'cold',beer:'cold',egg:'cold',apple:'produce',banana:'produce',tomato:'produce',strawberry:'produce',icecream:'freezer',dumpling:'freezer'},need=p=>NEED[p.id]||'shelf',hasFx=p=>S.fix.includes(need(p)),SC=12,
- tgt=p=>Math.max(Math.ceil((S.lastSold[p.id]||0)*1.2),Math.ceil(p.pack*.5)),lacks=p=>Math.max(0,tgt(p)-p.wh-p.shelf);
+ inc=p=>S.orders.filter(o=>o.id===p.id).reduce((a,o)=>a+o.q,0),
+ fc=p=>{const d=S.days.slice(-5),n=d.length,V=d.reduce((a,x)=>a+x.v,0),C=d.reduce((a,x)=>a+(x.cnt[p.id]||0),0),pri=2.25/Math.max(1,A().length),w=Math.min(n,3)/3;return((V?C/V:pri)*w+pri*(1-w))*S.expect},
+ plan=(p,mid)=>{if(!hasFx(p)||(p.cold&&!S.own.cold))return 0;const r=mid?(1320-S.min)/840:1;if(mid&&r<.12)return 0;const need=fc(p)*r*(mid?1.15:1.25)-(p.wh+p.shelf+inc(p));return need>0?Math.ceil(need/p.pack):0};
 function putOrder(p,boxes,inst){const q=boxes*p.pack,c=boxes*p.cost*p.pack;if(boxes<1||c>S.money||used(p.cold)+q>(p.cold?S.coldCap:S.ambCap))return 0;S.money-=c;if(inst)p.wh+=q;else S.orders.push({id:p.id,q,eta:S.min+30});return c}
-function autoBuy(mid){let n=0,c=0;A().forEach(p=>{if(p.cold&&!S.own.cold)return;if(mid&&(p.wh>=p.pack*.5||p.shelf>=SC||S.orders.some(o=>o.id===p.id)))return;const x=putOrder(p,mid?1:Math.ceil(lacks(p)/p.pack),!mid);if(x){n++;c+=x}});return{n,c}}
+function autoBuy(mid){let n=0,c=0;A().forEach(p=>{if(p.cold&&!S.own.cold)return;const x=putOrder(p,plan(p,mid),!mid);if(x){n++;c+=x}});return{n,c}}
 function syncStore(){const id=S.cur?S.cur.id:0;if(syncStore.id!==id){syncStore.id=id;store.setTill(id);store.setBelt(S.cur?S.cur.items.map(i=>i.id):[])}store.setQueue(S.queue.length)}
 
 function mk(){const av=A().filter(p=>(!p.cold||S.own.cold)&&hasFx(p)&&p.shelf>0);
@@ -125,7 +127,7 @@ function rCash(){const t=S.cur;
  if(!t)return `<div class=c><div style="font-size:40px">🧾</div><b>${S.phase==='open'?'暫時沒人排隊':S.phase==='prep'?'還沒開門':'已打烊'}</b><p>${S.phase==='open'?'可以去補貨、調價～顧客結帳時會自動排過來':'開門營業後，顧客會來這裡排隊結帳'}</p></div>`;
  const sc=t.items.filter(i=>i.s),sum=sc.reduce((a,i)=>a+pr(i.id).price,0),scan=t.ph==='scan',left=t.items.length-sc.length,
  lines=Object.entries(sc.reduce((m,i)=>(m[i.id]=(m[i.id]||0)+1,m),{})).map(([id,n])=>pr(id).n+' ×'+n+'　'+f(pr(id).price*n)).join('<br>')||'<span style="opacity:.6">點傳送帶上的商品掃碼</span>',
- head=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px"><b style="font-size:17px">${t.who}</b>${t.mem?'<span class=pill style="background:#ffe08a;font-size:12px;padding:3px 9px">💳 會員</span>':''}<span style="font-size:13px;font-weight:800;color:var(--sub)">${PML[t.pm]}</span><span style="flex:1"></span><span style="font-size:12px;color:var(--sub);font-weight:800">排隊 <b style="color:#ff5a4e;font-size:16px">${S.queue.length}</b> 人</span><button class=sm ${PK} data-a="quick" data-v="x">一鍵結算</button>${t.cs?'':`<button class=sm ${PK} data-a="leave" data-v="x">請他離開</button>`}</div><div class=pb style="height:10px;margin:0 0 10px"><i id=pat style="width:${Math.max(0,t.pat*100)}%"></i></div>`,
+ head=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px"><b style="font-size:17px">${t.who}</b>${S.member.own&&t.mem?'<span class=pill style="background:#ffe08a;font-size:12px;padding:3px 9px">💳 會員</span>':''}<span style="font-size:13px;font-weight:800;color:var(--sub)">${PML[t.pm]}</span><span style="flex:1"></span><span style="font-size:12px;color:var(--sub);font-weight:800">排隊 <b style="color:#ff5a4e;font-size:16px">${S.queue.length}</b> 人</span><button class=sm ${PK} data-a="quick" data-v="x">一鍵結算</button>${t.cs?'':`<button class=sm ${PK} data-a="leave" data-v="x">請他離開</button>`}</div><div class=pb style="height:10px;margin:0 0 10px"><i id=pat style="width:${Math.max(0,t.pat*100)}%"></i></div>`,
  rc=`<div class=rc><div class=l>${lines}${!scan&&t.mem?`<br>會員價 ${S.member.disc/10} 折　−${f(t.sum-t.total)}`:''}</div><div class=r><small>${scan?'已掃 '+sc.length+'/'+t.items.length:'應收'}</small><b>${f(scan?sum:t.total)}</b></div></div>`;
  let body;
  if(scan)body=(S.eq.scan?btn('scanall','x',`⚡ 一鍵掃碼（剩 ${left} 件）`,'btn w'):'')+`<div style="text-align:center;color:var(--sub);font-weight:800;font-size:13px;margin-top:8px">${S.eq.scan?'也可以':'請'}點傳送帶上的商品逐個掃</div>`;
@@ -141,7 +143,7 @@ function rShelf(){const G=[['shelf','🗄️','常溫貨架'],['cold','🧊','�
   return `<div class=hd style="font-size:14px;margin-top:12px"><span>${ic} ${n} ×${c}</span></div>`+(c?'':`<div class=hint>還沒有${n}，這些商品沒辦法上架（到「擴店」購買）</div>`)+ps.map(p=>`<div class=row><span class=ic>${ico(p)}</span><div class=nm>${p.n}${p.cold?' ❄️':''}<small>貨架 ${p.shelf}/${SC} · 倉庫 ${p.wh}</small><div class=bar style="margin-top:5px"><i style="width:${p.shelf/SC*100}%;background:${p.shelf<=2?'#d94452':'#2db36f'}"></i></div></div>${c?btn('rs',p.id,p.shelf>=SC?'已滿':'補貨',p.shelf>=SC||!p.wh?'sm off':'sm'):''}</div>`).join('')}).join('')}
 function rWh(){const au=used(false),cu=used(true),cold=S.own.cold,want=P.reduce((a,p)=>a+p.want,0),cost=P.reduce((a,p)=>a+p.want*p.cost*p.pack,0);
  return `<div class=hd><span>倉庫進貨</span><small>${S.phase==='prep'?'開門前下單立即到貨':'營業中下單，30 分鐘後到'}</small>${btn('smart','x','智能補貨','sm g')}</div><div class=cap>常溫 ${au}/${S.ambCap}<div class=bar><i style="width:${au/S.ambCap*100}%"></i></div></div><div class=cap>${cold?`冷藏 ${cu}/${S.coldCap}<div class=bar><i style="width:${cu/S.coldCap*100}%;background:#4aa3ff"></i></div>`:`❄️ 冷藏庫未購買　${S.lv<2?'<span class="sm off">Lv2 解鎖</span>':btn('tab','exp','去擴店購買','sm')}`}</div>`+
- A().map(p=>{const lock=p.cold&&!cold;return `<div class=row style="${lock?'opacity:.5':''}"><span class=ic>${ico(p)}</span><div class=nm>${p.n}${p.cold?' ❄️':''}<small>進價 ${f(p.cost)} ${chg(p)} · 倉庫 ${p.wh} · 貨架 ${p.shelf} · 1箱=${p.pack}${p.u}</small></div>${lock?'<span class="sm off">需冷藏庫</span>':btn('want',p.id+'|-1','−','sm g')+`<b style="width:22px;text-align:center">${p.want}</b>`+btn('want',p.id+'|1','＋','sm g')}</div>`}).join('')+
+ A().map(p=>{const lock=p.cold&&!cold;return `<div class=row style="${lock?'opacity:.5':''}"><span class=ic>${ico(p)}</span><div class=nm>${p.n}${p.cold?' ❄️':''}<small>進價 ${f(p.cost)} ${chg(p)} · 倉庫 ${p.wh} · 貨架 ${p.shelf} · 1箱=${p.pack}${p.u} · 預估 ${Math.round(fc(p))}/天</small></div>${lock?'<span class="sm off">需冷藏庫</span>':btn('want',p.id+'|-1','−','sm g')+`<b style="width:22px;text-align:center">${p.want}</b>`+btn('want',p.id+'|1','＋','sm g')}</div>`}).join('')+
  lockHint()+(S.orders.length?`<div class=hint>🚚 配送中：${S.orders.map(o=>pr(o.id).n+' ×'+o.q).join('、')}</div>`:'')+`<div style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 2px;display:flex;justify-content:space-between;align-items:center"><div><small style="color:var(--sub)">合計</small><br><b style="font-size:20px;color:#d64034">${f(cost)}</b></div>${btn('order','x','下單進貨',want?'btn':'btn g')}</div>`}
 function rPrice(){return `<div class=hd><span>今日價格</span><small>市價每天浮動</small></div><div class=chips>${btn('pall','mkt','全部=市價','chip')}${btn('pall','.9','全部九折','chip')}${btn('pall','1.1','全部+10%','chip')}</div>`+A().map(p=>{const m=Math.round((p.price-p.cost)/p.price*100),d=Math.round((p.price-p.mkt)/p.mkt*100);
  return `<div class=row><span class=ic>${ico(p)}</span><div class=nm>${p.n}<small>進價 ${f(p.cost)} · 市價 ${f(p.mkt)} · 毛利 ${m}%${d?` · <span style="color:${d>0?'#d94452':'#2c9b7f'}">${d>0?'偏貴':'偏便宜'} ${Math.abs(d)}%</span>`:''}</small></div>${btn('price',p.id+'|-1','−','sm g')}<b style="width:46px;text-align:center">${f(p.price)}</b>${btn('price',p.id+'|1','＋','sm g')}</div>`}).join('')}
@@ -194,7 +196,7 @@ function act(a,v){v=String(v);const[x,y]=v.split('|');
  else if(a==='quick'){if(S.cur)done(S.cur,{})}
  else if(a==='rs'){const p=pr(v),m=Math.min(SC-p.shelf,p.wh);if(m>0){p.wh-=m;p.shelf+=m;toast('已補貨 '+p.n+' +'+m)}else toast(p.shelf>=SC?'貨架已經滿了':'倉庫沒貨了',1)}
  else if(a==='rsall'){let n=0;A().forEach(p=>{if(!hasFx(p))return;const m=Math.min(SC-p.shelf,p.wh);if(m>0){p.wh-=m;p.shelf+=m;n+=m}});toast(n?'補貨完成，共 '+n+' 件':'沒有可補的貨',!n)}
- else if(a==='smart'){P.forEach(p=>p.want=0);A().forEach(p=>{if(p.cold&&!S.own.cold)return;p.want=Math.ceil(lacks(p)/p.pack)});toast('已依銷量幫你估好進貨量')}
+ else if(a==='smart'){P.forEach(p=>p.want=0);let n=0;A().forEach(p=>{const b=plan(p,S.phase==='open');p.want=b;if(b)n++});const dn=Math.min(5,S.days.length);toast(n?'已估好 '+n+' 種（'+(dn>=3?'依近 '+dn+' 天銷量':'營業天數不到 3 天，先用預設估算')+'）':'目前庫存夠用，不用補')}
  else if(a==='bm'){S.buyerMid=!S.buyerMid}
  else if(a==='leave'){if(S.cur){lose(S.cur,1);pull()}}
  else if(a==='quest'){S.qOpen=true;showQuest()}
@@ -204,8 +206,8 @@ function act(a,v){v=String(v);const[x,y]=v.split('|');
  else if(a==='upgrade'){const c=UPC[S.lv-1];if(canUp()){S.money+=2250-c;S.lv++;toast('升級成「'+lvName(S.lv)+'」！')}else toast('升級條件還沒達成',1)}
  else if(a==='claim'){const d=S.daily[+v];if(d&&!d.done&&qv(d.k)>=d.goal){d.done=true;S.money+=d.reward;toast('領取 '+f(d.reward))}showQuest()}
  else if(a==='open'){S.phase='open';S.min=480;S.visit=0;S.queue=[];S.pend=[];S.cur=null;CB.length=0;store.setOpen(true);toast('開門營業！')}
- else if(a==='close'){S.phase='closed';dropAll();S.pend=[];store.setOpen(false);settle();return}
- else if(a==='next'){closeModal();S.day++;S.min=480;S.visit=0;S.phase='prep';S.orders.forEach(o=>pr(o.id).wh+=o.q);S.orders=[];S.daily=newDaily();S.lastSold=S.stat.cnt;S.stat=newStat();rollDay();if(S.staff.buyer){const r=autoBuy(false);if(r.n)toast('🧑‍💻 採購員進貨 '+r.n+' 種，共 '+f(r.c))}showBrief()}
+ else if(a==='close'){S.phase='closed';dropAll();S.pend=[];if(S.stat.served){S.days.push({v:S.visit,cnt:S.stat.cnt});if(S.days.length>7)S.days.shift()}store.setOpen(false);settle();return}
+ else if(a==='next'){closeModal();S.day++;S.min=480;S.visit=0;S.phase='prep';S.orders.forEach(o=>pr(o.id).wh+=o.q);S.orders=[];S.daily=newDaily();S.stat=newStat();rollDay();if(S.staff.buyer){const r=autoBuy(false);if(r.n)toast('🧑‍💻 採購員進貨 '+r.n+' 種，共 '+f(r.c))}showBrief()}
  else if(a==='reset'){location.reload();return}
  render()}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b.dataset.v??'x')});
