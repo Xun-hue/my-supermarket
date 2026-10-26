@@ -98,9 +98,9 @@ export function initStore(host){
    else if(t==='clear'){g=new THREE.Group();box(1.8,.8,.9,0xd94452,0,.4,0,g);box(1.9,.08,1,0xe8b830,0,.84,0,g);for(let k=0;k<4;k++)box(.3,.3,.3,[0xe8b830,0xf4f4f4,0x4aa3ff][k%3],-.6+k*.4,1,0,g);tx='臨期 <em>7折</em>'}
    else{g=new THREE.Group();box(2,.8,1,0xf4f6fa,0,.4,0,g);box(1.9,.08,.9,0xbfe3ff,0,.84,0,g,.5);for(let k=0;k<5;k++)box(.3,.12,.5,[0xff9bb0,0x9bd0ff,0xffe08a][k%3],-.7+k*.35,.8,0,g);tx='冷凍櫃'}
    g.position.set(x,0,z);fixG.add(g);label(tx,x,(t==='shelf'||t==='cold')?2.3:1.6,z,null,true)})}
- const CPOS=[1.2,4.4,-2],cG=new THREE.Group();scene.add(cG);
+ const CPOS=[1.2,4.4,-2],cG=new THREE.Group();scene.add(cG);let lock=false,me=null;
  function setCounters(reg,cashiers){while(cG.children.length)cG.remove(cG.children[0]);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx==='c'){lbl[i].e.remove();lbl.splice(i,1)}
-  for(let i=0;i<Math.min(reg,CPOS.length);i++){const x=CPOS[i];cG.add(counter(x,3));const p=i===0?person(0x2d7ff9,{hat:2,cap:0x2d7ff9,vest:0xffffff}):(i<=cashiers?person(0xd94452,{hat:2,cap:0xd94452,vest:0xffffff}):null);if(p){p.position.set(x,0,2.05);cG.add(p)}label((i+1)+'號台',x,2.4,2.6,null,'c')}}
+  for(let i=0;i<Math.min(reg,CPOS.length);i++){const x=CPOS[i];cG.add(counter(x,3));const p=i===0?person(0x2d7ff9,{hat:2,cap:0x2d7ff9,vest:0xffffff}):(i<=cashiers?person(0xd94452,{hat:2,cap:0xd94452,vest:0xffffff}):null);if(p){p.position.set(x,0,2.05);cG.add(p);if(i===0)me=p}label((i+1)+'號台',x,2.4,2.6,null,'c')}if(me)me.visible=!lock}
  setCounters(2,0);
  const hot=new THREE.Group();hot.position.set(-6.4,0,4.9);box(2.4,.9,.9,0xb85c38,0,.45,0,hot);box(2.2,.5,.7,0xffb347,0,1.15,0,hot,.65);
  const dine=new THREE.Group();
@@ -120,13 +120,33 @@ export function initStore(host){
   const path=[[DOOR[0]+(Math.random()-.5)*.8,SW],DOOR,IN];for(let i=0,n=2+rnd(3);i<n;i++)path.push([...WP[rnd(WP.length)],1.2]);path.push(IN,DOOR,[DOOR[0]+(fl?-8:8),SW],[fl?-27:27,SW]);cust.push({m,path,i:0,wait:0})}
  function leaveAll(){cust.forEach(c=>{c.path=[DOOR,[DOOR[0]+8,SW],[27,SW]];c.i=0;c.wait=0})}
  const ring=new THREE.Mesh(new THREE.RingGeometry(1.3,1.5,32),new THREE.MeshBasicMaterial({color:0xffc400,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;ring.visible=false;scene.add(ring);
+ // 收銀台前的顧客、排隊、傳送帶商品（點商品掃碼）
+ const QS=[[1.2,4.9],[1.2,5.7],[2.4,5.3],[0,5.3]],TILL=[1.2,3.95],beltG=new THREE.Group(),rc=new THREE.Raycaster(),v2=new THREE.Vector2();scene.add(beltG);
+ let belt=[],pick=null,till=null,tillId=0,qm=[],qd=false,dn=null;
+ const mkp=()=>{const m=person(COL[rnd(6)]);m.position.set(DOOR[0],0,DOOR[1]);scene.add(m);return m};
+ function setTill(id){if(id===tillId)return;tillId=id;
+  if(till){cust.push({m:till,path:[[TILL[0],5.2],DOOR,[DOOR[0]+8,SW],[27,SW]],i:0,wait:0});till=null}
+  if(id){till=qm.length?qm.shift():mkp();till.userData.tg=TILL;qd=true}}
+ function setQueue(n){n=Math.min(4,n);if(n===qm.length&&!qd)return;qd=false;while(qm.length>n)scene.remove(qm.pop());while(qm.length<n)qm.push(mkp());qm.forEach((m,i)=>m.userData.tg=QS[i])}
+ function setBelt(ids){belt.forEach(b=>beltG.remove(b.g));belt=ids.map((id,i)=>{const g=new THREE.Group();prod(id,g,0,0,0);g.position.set(CPOS[0]-.9+i*.38,.99,i%2?.1:-.1);g.scale.setScalar(1.35);g.rotation.y=(i%3-1)*.4;
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(.26,.6,.5),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=.2;hit.userData.i=i;g.add(hit);beltG.add(g);return{g,hit,s:false,t:0}})}
+ function beltScan(i){const b=belt[i];if(b&&b.s===false)b.s=true}
+ function beltScanAll(){belt.forEach((b,k)=>setTimeout(()=>beltScan(k),k*110))}
+ function tick(t){[till,...qm].forEach(m=>{const g=m&&m.userData.tg;if(!g)return;const dx=g[0]-m.position.x,dz=g[1]-m.position.z,d=Math.hypot(dx,dz),a=m.userData.arms;
+   if(d>.08){m.position.x+=dx/d*.05;m.position.z+=dz/d*.05;m.rotation.y=Math.atan2(dx,dz);a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}else{m.rotation.y=Math.PI;a[0].rotation.x=a[1].rotation.x=0}});
+  belt.forEach(b=>{if(b.s!==true)return;b.t+=.05;b.g.position.x+=(CPOS[0]+.85-b.g.position.x)*.2;b.g.position.y=.99+Math.sin(b.t*3)*.12;b.g.scale.multiplyScalar(.93);if(b.t>1){beltG.remove(b.g);b.s=2}})}
+ R.domElement.addEventListener('pointerdown',e=>{dn={x:e.clientX,y:e.clientY}});
+ R.domElement.addEventListener('pointerup',e=>{if(!dn)return;const mv=Math.hypot(e.clientX-dn.x,e.clientY-dn.y);dn=null;if(mv>10||!belt.length)return;
+  const r=R.domElement.getBoundingClientRect();v2.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);rc.setFromCamera(v2,cam);
+  const h=rc.intersectObjects(belt.filter(b=>b.s===false).map(b=>b.hit),false)[0];if(h&&pick)pick(h.object.userData.i)});
+
  // 鏡頭：預設位置會順順滑過去；單指旋轉、雙指縮放
- const PRE={all:{x:-1,z:.5,az:.62,el:.9,dist:25},cash:{x:2.8,z:3.4,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:-1,z:-4,az:.35,el:.75,dist:16},food:{x:-5,z:4.5,az:.5,el:.85,dist:13},dine:{x:10,z:-.4,az:.55,el:.85,dist:17}};
- const goal={...PRE.all},cur={...PRE.all},pts=new Map(),cv=R.domElement;
- const place=()=>{cam.position.set(cur.x+Math.sin(cur.az)*Math.cos(cur.el)*cur.dist,.6+Math.sin(cur.el)*cur.dist,cur.z+Math.cos(cur.az)*Math.cos(cur.el)*cur.dist);cam.lookAt(cur.x,.6,cur.z)};
+ const PRE={all:{x:-1,z:.5,az:.62,el:.9,dist:25},cash:{x:2.8,z:3.4,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:-1,z:-4,az:.35,el:.75,dist:16},food:{x:-5,z:4.5,az:.5,el:.85,dist:13},dine:{x:10,z:-.4,az:.55,el:.85,dist:17},till:{x:1.2,z:4,az:Math.PI,el:.3,dist:3.3,ly:1.15}};
+ const goal={...PRE.all,ly:.6},cur={...PRE.all,ly:.6},pts=new Map(),cv=R.domElement;
+ const place=()=>{cam.position.set(cur.x+Math.sin(cur.az)*Math.cos(cur.el)*cur.dist,.6+Math.sin(cur.el)*cur.dist,cur.z+Math.cos(cur.az)*Math.cos(cur.el)*cur.dist);cam.lookAt(cur.x,cur.ly,cur.z)};
  const pd=()=>{const a=[...pts.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};
  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY})});
- cv.addEventListener('pointermove',e=>{const p=pts.get(e.pointerId);if(!p)return;
+ cv.addEventListener('pointermove',e=>{const p=pts.get(e.pointerId);if(!p||lock)return;
   if(pts.size===2){const o=pd();p.x=e.clientX;p.y=e.clientY;goal.dist=Math.min(34,Math.max(7,goal.dist*o/pd()))}
   else{goal.az=Math.min(1.25,Math.max(.1,goal.az-(e.clientX-p.x)*.007));goal.el=Math.min(1.2,Math.max(.45,goal.el+(e.clientY-p.y)*.005));p.x=e.clientX;p.y=e.clientY}});
  const up=e=>pts.delete(e.pointerId);cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
@@ -136,9 +156,9 @@ export function initStore(host){
   for(const k in goal)cur[k]+=(goal[k]-cur[k])*.08;place();
   for(let i=cust.length-1;i>=0;i--){const c=cust[i],p=c.m.position;if(c.wait>0){c.wait-=.016;continue}const pt=c.path[c.i];if(!pt){scene.remove(c.m);cust.splice(i,1);continue}
    const dx=pt[0]-p.x,dz=pt[1]-p.z,d=Math.hypot(dx,dz);if(d<.12){c.wait=pt[2]||0;c.i++}else{p.x+=dx/d*.045;p.z+=dz/d*.045;c.m.rotation.y=Math.atan2(dx,dz);p.y=Math.abs(Math.sin(t*9))*.04;const a=c.m.userData.arms;if(a){a[0].rotation.x=Math.sin(t*9)*.7;a[1].rotation.x=-Math.sin(t*9)*.7}}}
-  R.render(scene,cam);cam.updateMatrixWorld();
-  const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(l.vis&&!l.vis()){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*W.h;if(p.z>1||yy<hH||W.h<240){l.e.style.display='none';return}
+  tick(t);R.render(scene,cam);cam.updateMatrixWorld();
+  const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(lock||(l.vis&&!l.vis())){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*W.h;if(p.z>1||yy<hH||W.h<240){l.e.style.display='none';return}
    l.e.style.display='';l.e.style.transform=`translate(${(p.x*.5+.5)*W.w}px,${(-p.y*.5+.5)*W.h}px) translate(-50%,-100%)`})})();
- return{setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
-  focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=POS[+n.slice(5)];if(s)p={x:s[0],z:s[1]+.5,az:.3,el:.7,dist:9}}if(p)Object.assign(goal,p)},
+ return{setTill,setQueue,setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;if(k==='dine')rwFill.visible=!v},setWall:c=>walls.forEach(w=>w.material.color.setHex(c)),setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,
+  focus:n=>{let p=PRE[n];if(!p&&n.startsWith('shelf')){const s=POS[+n.slice(5)];if(s)p={x:s[0],z:s[1]+.5,az:.3,el:.7,dist:9}}lock=n==='till';if(me)me.visible=!lock;if(p)Object.assign(goal,{ly:.6},p)},
   mark:i=>{if(i<0||!POS[i]){ring.visible=false;return}ring.visible=true;ring.position.x=POS[i][0];ring.position.z=POS[i][1]+.3}}}
