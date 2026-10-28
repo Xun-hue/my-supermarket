@@ -98,7 +98,7 @@ function settle(){const st=S.stat,sim=!st.served;if(sim)daySim();if(!st.best){co
  `<div class=chart>${H.map((v,i)=>`<div style="height:${Math.max(6,Math.abs(v)/mx*100)}px;background:${v>=0?'#2db36f':'#d94452'}"><span>D${S.day-H.length+1+i}</span></div>`).join('')}</div>${sim?'<p style="font-size:11px;color:var(--sub);text-align:center;margin:-8px 0 8px">今天沒有真實交易，這是模擬結算</p>':''}<button class="btn w" data-a="next">下一天 →</button>`);fitModal()}
 // ---- 各分頁 ----
 // ---- 收銀流程：顧客排隊 → 掃碼 → 收款（現金找零／行動支付／刷卡）----
-const CB=[],SV=[];let TID=0;const SH=[];
+const CB={},SV={};let TID=0;const SH=[];
 const lotSync=p=>{if(!p.life)return;const tot=p.wh+p.shelf+(p.tr||0),s=p.lots.reduce((a,l)=>a+l.q,0);if(s<tot)p.lots.push({q:tot-s,d:p.life});else if(s>tot){p.lots.sort((a,b)=>a.d-b.d);let x=s-tot;for(const l of p.lots){const m=Math.min(l.q,x);l.q-=m;x-=m;if(!x)break}}p.lots=p.lots.filter(l=>l.q>0)},
  recv=(p,q)=>{lotSync(p);p.wh+=q;if(!p.life)return;const sh=Math.random()<.25;p.lots.push({q,d:sh?rnd3(2):p.life});if(sh){SH.push(p.n);const rb=Math.round(q*p.cost*.4);S.money+=rb;S.stat.rebate+=rb}},
  shTxt=()=>{const t=SH.length?'⚠️ 即期貨：'+[...new Set(SH)].join('、')+'（退 4 成貨款）':'';SH.length=0;return t},
@@ -112,8 +112,7 @@ const NEED={milk:'cold',yogurt:'cold',beer:'cold',egg:'cold',apple:'produce',ban
 function putOrder(p,boxes,inst){const q=boxes*p.pack,c=boxes*p.cost*p.pack;if(boxes<1||c>S.money||used(p.cold)+q>(p.cold?S.coldCap:S.ambCap))return 0;S.money-=c;if(inst)recv(p,q);else S.orders.push({id:p.id,q,eta:S.min+30});return c}
 function autoBuy(mid){let n=0,c=0;A().forEach(p=>{if(p.cold&&!S.own.cold)return;const x=putOrder(p,plan(p,mid),!mid);if(x){n++;c+=x}});return{n,c}}
 function fxView(){return S.fxd.map(x=>({t:x.t,pi:x.pi,rot:x.rot,dx:x.dx,dz:x.dz,label:x.t==='shelf'?fxName(x):TNAME[x.t],pids:x.s.map(sl=>sl?sl.pid:null)}))}
-const qSite=()=>{const cn=S.staff.cashier||0,sn=S.eq.self?SPEC(S.lv).self:0;return cn>0?'c2':sn>0?'self':S.tab==='cash'?'c1':'hold'};
-function syncStore(){{const q=qSite();if(syncStore.q!==q){syncStore.q=q;store.setQueueSite(q)}}const id=S.cur?S.cur.id:0;if(syncStore.id!==id){syncStore.id=id;store.setTill(id);store.setBelt(S.cur?S.cur.items.map(i=>i.id):[])}
+function syncStore(){const id=S.cur?S.cur.id:0;if(syncStore.id!==id){syncStore.id=id;store.setTill(id);store.setBelt(S.cur?S.cur.items.map(i=>i.id):[])}
  {const fv=JSON.stringify(fxView());if(syncStore.fv!==fv){syncStore.fv=fv;store.setFixtures(JSON.parse(fv));syncStore.sg=null}}
  {const sg=A().map(p=>p.shelf+':'+p.clr).join(',')+'|'+S.fix.join()+'|'+S.fxd.map(x=>x.cl).join();if(syncStore.sg!==sg){syncStore.sg=sg;const m={};P.forEach(p=>m[p.id]=capOf(p)?Math.min(1,p.shelf/capOf(p)):0);m._clear=clrCap()?Math.min(1,P.reduce((a,p)=>a+p.clr,0)/clrCap()):0;store.setStock(m)}}}
 // 自動把還沒上架的商品擺進空格（玩家主動下架的不會再自動擺）
@@ -157,34 +156,40 @@ function stopsFor(){const ix=S.fxd.map((x,i)=>x.t==='clear'||!x.s.some(sl=>sl&&s
  if(s.length&&cx.length&&A().some(p=>p.clr>0)&&Math.random()<DISC[S.clrD].visit)s.splice(rnd3(s.length+1),0,cx[rnd3(cx.length)]);return s}
 function take(cid,fi){const c=carts[cid],fx=S.fxd[fi];if(!c||!fx)return;const cl=fx.t==='clear',dz=DISC[S.clrD].more,n=c.thief?1+rnd3(2):cl?1+(Math.random()<dz?1:0)+(Math.random()<dz/2?1:0):1+(Math.random()<.4?1:0)+(S.eq.cart&&Math.random()<.5?1:0);
  for(let k=0;k<n&&c.items.length<5;k++){const ok=cl?A().filter(p=>p.clr>0):fx.s.filter(sl=>sl&&sl.q>0).map(sl=>pr(sl.pid)).filter(p=>!p.cold||S.own.cold);if(!ok.length)break;const p=ok[rnd3(ok.length)],pp=cl?clrP(p):p.price;if(!cl&&p.price>p.mkt*1.2&&Math.random()<.5)continue;if(cl)p.clr--;else{p.shelf--;lotSync(p)}c.items.push({id:p.id,s:false,pr:pp,cl:cl?1:0});c.sum+=pp;c.cogs+=p.cost}}
+const LCAP=3,KCAP=2,HCAP=6;
+const activeLanes=()=>{const cn=Math.min(S.staff.cashier||0,SPEC(S.lv).reg-1),sn=S.eq.self?SPEC(S.lv).self:0,a=[];if(S.tab==='cash')a.push('c0');for(let i=1;i<=cn;i++)a.push('c'+i);for(let k=0;k<sn;k++)a.push('k'+k);return a},
+ laneN=k=>S.queue.filter(t=>t.lane===k).length+(S.cur&&S.cur.lane===k?1:0),laneCap=k=>k==='hold'?HCAP:k[0]==='k'?KCAP:LCAP;
+function pickLane(){const act=activeLanes();let best=null,bc=1e9;act.forEach(k=>{const n=laneN(k);if(n>=laneCap(k))return;const c=(n+.5)*(k[0]==='k'?1.6:k==='c0'?1.2:1);if(c<bc){bc=c;best=k}});return best||(act.length?null:laneN('hold')<HCAP?'hold':null)}
+function rebalance(){const act=activeLanes();let ch=false;S.queue.slice().forEach(t=>{if(t.srv)return;const bad=t.lane==='hold'?act.length>0:!act.includes(t.lane);if(!bad)return;const old=t.lane;t.lane=null;const k=pickLane();if(!k){t.lane=old;return}t.lane=k;if(k!==old){S.queue=S.queue.filter(x=>x!==t);S.queue.push(t);store.moveCust(t.id,k);ch=true}});return ch}
 function arrive(cid){const c=carts[cid];delete carts[cid];if(!c||!c.items.length){S.stat.lost++;return false}
- if(S.queue.length>=6){c.items.forEach(back);S.stat.lost++;return false}
+ const lane=pickLane();if(!lane){c.items.forEach(back);S.stat.lost++;return false}
  const sum=c.sum,mem=S.member.own&&Math.random()<Math.min(.6,S.member.count/200),total=mem?Math.round(sum*S.member.disc/100):sum,r=Math.random(),pm=r<.5?'cash':r<.8?'qr':'card',
  t={items:c.items,sum,total,cogs:c.cogs,mem,pm,pat:1,ph:'scan',chg:[],cs:null,id:cid,who:['上班族','學生','阿嬤','大叔','媽媽'][rnd3(5)]};
  if(pm==='cash'){const o=[...new Set([total,Math.ceil(total/10)*10,Math.ceil(total/50)*50,Math.ceil(total/100)*100,500,1000])].filter(x=>x>=total);t.given=o[rnd3(o.length)];t.due=t.given-total}
- S.queue.push(t);S.dirty=true;return true}
+ t.lane=lane;S.queue.push(t);S.dirty=true;return lane}
 function lose(t,pen){t.items.forEach(back);S.stat.lost++;if(pen)S.star=Math.max(0,S.star-1);
- if(S.cur===t)S.cur=null;else{S.queue=S.queue.filter(x=>x!==t);store.leave(t.id)}if(pen)toast('顧客等不及走了　⭐-1',1)}
-function pull(){if(S.tab==='cash'&&!S.cur&&S.queue.length){S.cur=S.queue.shift();S.cur.t0=performance.now();S.kb=''}}
+ S.queue=S.queue.filter(x=>x!==t);if(S.cur===t)S.cur=null;store.leave(t.id);if(pen)toast('顧客等不及走了　⭐-1',1)}
+function pull(){if(S.tab==='cash'&&!S.cur){const i=S.queue.findIndex(t=>t.lane==='c0'&&!t.srv);if(i>=0){S.cur=S.queue.splice(i,1)[0];S.cur.t0=performance.now();S.kb=''}}}
 function done(t,o){const st=S.stat,err=o.err||0,pf=o.perfect&&t.pm==='cash';
  st.served++;st.gross+=t.sum;st.memberDisc+=t.sum-t.total;st.cogs+=t.cogs;st.err+=err;{const w=o.auto?o.who:'you',b=st.by[w];b.n++;b.rev+=t.total-err;if(!o.auto)st.ct+=(performance.now()-(t.t0||performance.now()))/1000}t.items.forEach(i=>{if(i.cl){st.clr++;st.clrRev+=i.pr}else st.cnt[i.id]=(st.cnt[i.id]||0)+1});
- S.money+=t.total-err;S.total+=t.total-err;if(S.cur===t)S.cur=null;else store.leave(t.id);
+ S.money+=t.total-err;S.total+=t.total-err;S.queue=S.queue.filter(x=>x!==t);if(S.cur===t)S.cur=null;store.leave(t.id);
  if(pf){st.perfect++;S.star++}
  if(S.member.own&&!t.mem&&Math.random()<RATE[S.member.disc]){st.newMember++;S.member.count++}
  if(!o.auto){toast('收款成功 +'+f(t.total-err)+(pf?'　完美找零！':''));S.kb='';pull()}
  hud()}
-function dropAll(){SV.forEach(x=>x&&done(x.t,{auto:1,who:x.who,perfect:0}));SV.length=0;[S.cur,...S.queue].filter(Boolean).forEach(t=>lose(t,0));S.cur=null;S.queue=[];syncStore()}
+function dropAll(){Object.values(SV).forEach(x=>done(x.t,{auto:1,who:x.who,perfect:0}));Object.keys(SV).forEach(k=>delete SV[k]);[S.cur,...S.queue].filter(Boolean).forEach(t=>lose(t,0));S.cur=null;S.queue=[];syncStore()}
 function tickCash(dt){let ch=false;
  if(S.dirty){S.dirty=false;ch=true}
- const site=qSite(),hold=site==='hold',dec=dt/(45*(1+(S.eq.ac?.35:0)));[S.cur,...S.queue].forEach(t=>{if(t&&!t.cs&&!(hold&&t!==S.cur))t.pat-=dec});
- if(hold&&S.queue.length&&performance.now()>(tickCash.hn||0)){tickCash.hn=performance.now()+20000;toast('沒有人收銀，顧客在入口等（到「收銀」頁自己收，或僱收銀員／裝自助機）',1)}
+ if(rebalance())ch=true;const hold=S.queue.some(t=>t.lane==='hold'),dec=dt/(45*(1+(S.eq.ac?.35:0)));[S.cur,...S.queue].forEach(t=>{if(t&&!t.cs&&!t.srv&&t.lane!=='hold')t.pat-=dec});
+ if(hold&&performance.now()>(tickCash.hn||0)){tickCash.hn=performance.now()+20000;toast('沒有人收銀，顧客在入口等（到「收銀」頁自己收，或僱收銀員／裝自助機）',1)}
  {const rd=!!S.cur&&store.tillReady();if(rd!==tickCash.rd){tickCash.rd=rd;ch=true}}
- [S.cur,...S.queue].filter(t=>t&&t.pat<=0).forEach(t=>{lose(t,1);ch=true});
- const now=performance.now(),cn=S.staff.cashier||0,sn=S.eq.self?SPEC(S.lv).self:0;for(let i=0;i<cn+sn;i++){const sv=SV[i],ck=i<cn;
-  if(sv){if(now>=sv.end){SV[i]=null;CB[i]=now+500;done(sv.t,{auto:1,who:sv.who,perfect:ck?1:0});ch=true}}
-  else if(S.queue.length&&now>=(CB[i]||0)){const t=S.queue.shift();SV[i]={t,who:ck?'cashier':'self',end:now+(ck?4+Math.random()*3:7+Math.random()*4)*1000};store.serveAt(t.id,ck?'c':'k',ck?i+1:i-cn);ch=true}}
- for(let i=cn+sn;i<SV.length;i++)if(SV[i]){done(SV[i].t,{auto:1,who:SV[i].who,perfect:0});SV[i]=null;ch=true}
- if(!S.cur&&S.tab==='cash'&&S.queue.length){pull();ch=true}
+ [S.cur,...S.queue].filter(t=>t&&!t.srv&&t.pat<=0).forEach(t=>{lose(t,1);ch=true});
+ const now=performance.now(),act=activeLanes().filter(k=>k!=='c0');
+ act.forEach(k=>{const sv=SV[k],ck=k[0]==='c';
+  if(sv){if(!sv.end){if(store.laneReady(sv.t.id))sv.end=now+sv.dur*1000}else if(now>=sv.end){delete SV[k];CB[k]=now+500;done(sv.t,{auto:1,who:sv.who,perfect:ck?1:0});ch=true}}
+  else if(now>=(CB[k]||0)){const t=S.queue.find(x=>x.lane===k&&!x.srv);if(t){t.srv=true;const dur=ck?4+Math.random()*3:7+Math.random()*4;SV[k]={t,who:ck?'cashier':'self',dur,end:0};if(ck)store.serveBelt(t.id,t.items.map(i=>i.id),dur);ch=true}}});
+ Object.keys(SV).forEach(k=>{if(!act.includes(k)){const sv=SV[k];delete SV[k];done(sv.t,{auto:1,who:sv.who,perfect:0});ch=true}});
+ if(!S.cur&&S.tab==='cash'){pull();if(S.cur)ch=true}
  let rf=dTick();
  if(ch){hud();if(S.tab==='cash')render()}if(rf&&(S.tab==='shelf'||S.tab==='wh'))render();
  syncStore();const e=$('pat');if(e&&S.cur)e.style.width=Math.max(0,S.cur.pat*100)+'%'}
@@ -310,7 +315,7 @@ function act(a,v){v=String(v);const[x,y]=v.split('|');
  else if(a==='disc'){S.member.disc=+v;toast('會員折扣設為 '+v+' 折');showMember()}
  else if(a==='upgrade'){const c=UPC[S.lv-1];if(canUp()){S.money+=2250-c;S.lv++;toast('升級成「'+lvName(S.lv)+'」！')}else toast('升級條件還沒達成',1)}
  else if(a==='claim'){const d=S.daily[+v];if(d&&!d.done&&qv(d.k)>=d.goal){d.done=true;S.money+=d.reward;toast('領取 '+f(d.reward))}showQuest()}
- else if(a==='open'){S.phase='open';S.min=480;S.visit=0;S.queue=[];S.pend=[];S.cur=null;CB.length=0;SV.length=0;S.dord=[];S.buyerBusy=false;store.setOpen(true);toast('開門營業！')}
+ else if(a==='open'){S.phase='open';S.min=480;S.visit=0;S.queue=[];S.pend=[];S.cur=null;Object.keys(CB).forEach(k=>delete CB[k]);Object.keys(SV).forEach(k=>delete SV[k]);S.dord=[];S.buyerBusy=false;store.setOpen(true);toast('開門營業！')}
  else if(a==='close'){S.phase='closed';dropAll();closeDelivery();S.buyerBusy=false;S.pend=[];Object.keys(carts).forEach(k=>{carts[k].items.forEach(back);delete carts[k]});if(S.stat.served){S.days.push({v:S.visit,cnt:S.stat.cnt});if(S.days.length>7)S.days.shift()}store.setOpen(false);expire();settle();return}
  else if(a==='next'){closeModal();S.day++;S.min=480;S.visit=0;S.phase='prep';S.daily=newDaily();S.stat=newStat();S.orders.forEach(o=>recv(pr(o.id),o.q));S.orders=[];rollDay();let bt='';if(S.staff.buyer){const r=autoBuy(false);if(r.n)bt='🧑‍💻 採購員進貨 '+r.n+' 種，共 '+f(r.c)}{const t=shTxt();if(t||bt)toast(t||bt,!!t)}saveGame();showBrief()}
  else if(a==='reset'){try{localStorage.removeItem(SAVE)}catch(e){}location.reload();return}
