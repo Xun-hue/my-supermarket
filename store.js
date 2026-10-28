@@ -147,9 +147,15 @@ export function initStore(host){
   [GZ-1,GZ+1].forEach(z=>box(.3,2.3,.2,0x9aa5b8,.1,1.15,z,dine));box(.3,.35,2.2,0x9aa5b8,.1,2.3,GZ,dine);
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const x=2.3+2.6*c,z=-2.6+3.4*r;box(1.1,.06,1.1,0xd9c3a5,x,.75,z,dine);box(.1,.72,.1,0x8a6a4a,x,.38,z,dine);[-.85,.85].forEach(o=>box(.4,.4,.4,0xe05a4a,x+o,.2,z,dine))}
   dineL.v.set(x1+.2+dW/2,2.2,zm)}
- let W=16,D=12,x1=8,z1=6,dc=6.2,xb=1.2,SW=7.6,DOOR=[6.2,6.9],IN=[6.2,5],PQ=[6.3,5.5],TILL=[1.2,3.95],QS=[],CPOS=[],SLOTS=[],maxDist=34,wallC=0xf6ede2,focusName='all',STN=[8,6.5];
+ let W=16,D=12,x1=8,z1=6,dc=6.2,xb=1.2,SW=7.6,DOOR=[6.2,6.9],IN=[6.2,5],PQ=[6.3,5.5],TILL=[1.2,3.95],QS=[],CPOS=[],SLOTS=[],maxDist=34,wallC=0xf6ede2,focusName='all',STN=[8,6.5],site='c1';
+ // 排隊點：有收銀員排在收銀員的櫃檯、有自助機排在自助機、都沒有時只在入口旁等（耐心暫停）
+ function qsFor(k){const sn=curEq.self||0,n=[0,1,2,3,4,5];
+  if(k==='c2')return n.map(i=>[CPOS[1]+.85*(i%3),z1-(i<3?1.4:.5)]);
+  if(k==='self')return n.map(i=>i<sn?[x1-1.5,z1-5-1.3*i]:[x1-2.5,z1-5-1.3*(i-sn)]);
+  if(k==='hold')return n.map(i=>[dc-1.8-.85*i,z1-.8]);
+  return n.map(i=>[xb+.85*i,z1-1.4])}
  const shell=new THREE.Group();scene.add(shell);let walls=[],rwFill=null;
- function buildShell(lv){clearGroup(shell);walls=[];W=11+2*lv;D=9+2*lv;x1=x0+W;z1=z0+D;dc=x1-1.8;xb=x1-6.8;SW=z1+1.6;DOOR=[dc,z1+.9];IN=[dc,z1-1];PQ=[x1-1.7,z1-.5];STN=[dc+1.7,z1+.5];TILL=[xb,z1-2.05];QS=[0,1,2,3,4,5].map(k=>[xb+.85*k,z1-1.4]);CPOS=[xb,xb+3.2,xb-3.2,xb-6.4,xb-9.6,xb-12.8];maxDist=34+(lv-1)*3;
+ function buildShell(lv){clearGroup(shell);walls=[];W=11+2*lv;D=9+2*lv;x1=x0+W;z1=z0+D;dc=x1-1.8;xb=x1-6.8;SW=z1+1.6;DOOR=[dc,z1+.9];IN=[dc,z1-1];PQ=[x1-1.7,z1-.5];STN=[dc+1.7,z1+.5];TILL=[xb,z1-2.05];CPOS=[xb,xb+3.2,xb-3.2,xb-6.4,xb-9.6,xb-12.8];QS=qsFor(site);maxDist=34+(lv-1)*3;
   const cx=x0+W/2,wl=(w,h,d,x,y,z)=>{const m=box(w,h,d,wallC,x,y,z,shell);walls.push(m);return m},gl=(w,h,d,x,y,z,p)=>box(w,h,d,0xbfe3ff,x,y,z,p||shell,.2);
   ft.repeat.set(W/2,D/2);const floor=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshLambertMaterial({map:ft}));floor.rotation.x=-Math.PI/2;floor.position.set(cx,0,z0+D/2);floor.receiveShadow=true;shell.add(floor);
   wl(W+.4,2.8,.2,cx,1.4,z0-.1);box(W+.6,.35,.3,0xc0392b,cx,2.6,z0-.05,shell);
@@ -213,7 +219,7 @@ export function initStore(host){
   if(e.gate)[-.95,.95].forEach(s=>{box(.1,1.3,.3,0xe9edf2,dc+s,.65,z1-.5,eqG);box(.12,.1,.12,0xff3b3b,dc+s,1.35,z1-.5,eqG)});
   if(e.cctv)[[x0+.4,2.35,z0+.4],[x1-.4,2.35,z0+.4],[dc,2.2,z1-.2]].forEach(([x,y,z])=>{const c=camModel();c.position.set(x,y,z);c.rotation.x=.3;eqG.add(c)});
   for(let k=0;k<(e.self||0);k++){const z=z1-5-1.3*k,g=kiosk();g.position.set(x1-.55,0,z);g.rotation.y=-Math.PI/2;eqG.add(g);navEq.push([x1-1.05,x1,z-.5,z+.5,.1])}
-  navOn=false;if(curCnt)setCounters(curCnt[0],curCnt[1],e)}
+  QS=qsFor(site);navOn=false;if(curCnt)setCounters(curCnt[0],curCnt[1],e)}
  // ===== 員工（買了才會出現；增減人數時只動那一位）=====
  const stfG=new THREE.Group();scene.add(stfG);let stf=[],curStf={},curBags=0,bagG=new THREE.Group();
  const LIM={stocker:6,guard:2,buyer:2,packer:2,night:2},dskPos=i=>[OX-1.8+3.6*i,zf+.85];
@@ -260,12 +266,15 @@ export function initStore(host){
  function leaveAll(){cust.forEach(c=>dropC(c));cust.length=0}
  const ring=new THREE.Mesh(new THREE.RingGeometry(1.3,1.5,32),new THREE.MeshBasicMaterial({color:0xffc400,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;ring.visible=false;scene.add(ring);
  const beltG=new THREE.Group(),rc=new THREE.Raycaster(),v2=new THREE.Vector2();scene.add(beltG);
- let belt=[],pick=null,till=null,tillId=0,qm=[],dn=null;
+ let belt=[],pick=null,till=null,tillId=0,qm=[],dn=null,pendBelt=null;const svc=[];
  const mkp=()=>{const m=person(COL[rnd(6)]);m.position.set(DOOR[0],0,DOOR[1]);scene.add(m);return m};
  function setTill(id){if(id===tillId)return;tillId=id;
   if(till){cust.push({m:till,path:exitFrom(till),i:0,wait:0});till=null}
   if(id){const k=qm.findIndex(m=>m.userData.cid===id);till=k>=0?qm.splice(k,1)[0]:mkp();till.userData.tg=TILL}}
- function leave(cid){const k=qm.findIndex(m=>m.userData.cid===cid);if(k<0)return;const m=qm.splice(k,1)[0];cust.push({m,path:exitFrom(m),i:0,wait:0})}
+ function leave(cid){let m,k=qm.findIndex(q=>q.userData.cid===cid);if(k>=0)m=qm.splice(k,1)[0];else{k=svc.findIndex(q=>q.userData.cid===cid);if(k<0)return;m=svc.splice(k,1)[0]}cust.push({m,path:exitFrom(m),i:0,wait:0})}
+ // 收銀員／自助機結帳：顧客先走到櫃台（或機器）前站著，結完才離開
+ function serveAt(cid,kind,idx){const k=qm.findIndex(q=>q.userData.cid===cid);if(k<0)return;const m=qm.splice(k,1)[0];m.userData.tg=kind==='k'?[x1-1.5,z1-5-1.3*idx]:[CPOS[idx]!=null?CPOS[idx]:xb,z1-2.05];m.userData.fc=kind==='k'?Math.PI/2:Math.PI;svc.push(m)}
+ function setQueueSite(k){if(k===site)return;site=k;QS=qsFor(k)}
  // ===== 小偷：頭上的紅色按鈕、被抓後道歉離開 =====
  const WS=2.7,FS=2.4,GS=4.4,tmpV=new THREE.Vector3();
  function remT(c){if(c.dk==null||c.i>c.dk)return 0;let t=c.wait>0?c.wait:0,x=c.m.position.x,z=c.m.position.z;for(let k=c.i;k<=c.dk;k++){const q=c.path[k];t+=Math.hypot(q[0]-x,q[1]-z)/(k>c.fk||c.fleeing?c.fs:WS)+(k>c.i?(q[2]||0):0);x=q[0];z=q[1]}return t}
@@ -277,7 +286,9 @@ export function initStore(host){
   else if(tag==='flee'){alertOn(c);c.fleeing=!!c.alert}
   else if(tag==='door'){if(c.alert&&c.state!=='caught'&&cb&&cb.thief){cb.thief(c.cid,'door');if(c.state!=='caught'){c.escaped=true;c.alert=false;c.fleeing=false;if(c.tf){c.tf.remove();c.tf=null}cb.thief(c.cid,'escape')}}}
   else{c.face=FXS[tag.s]?FXS[tag.s].r*Math.PI/2+Math.PI:Math.PI;if(cb)cb.take(c.cid,tag.s);if(c.thief&&curEq.cctv)alertOn(c)}}
- function setBelt(ids){belt.forEach(b=>beltG.remove(b.g));const zc=z1-3;belt=ids.map((id,i)=>{const g=new THREE.Group();prod(id,g,0,0,0);g.position.set(CPOS[0]-.95+i*.34,.99,zc+(i%2?.1:-.1));g.scale.setScalar(1.25);g.rotation.y=(i%3-1)*.4;
+ function tillReady(){return !!till&&Math.hypot(TILL[0]-till.position.x,TILL[1]-till.position.z)<.15}
+ function setBelt(ids){belt.forEach(b=>beltG.remove(b.g));belt=[];pendBelt=ids&&ids.length?ids:null;if(pendBelt&&tillReady()){buildBelt(pendBelt);pendBelt=null}}
+ function buildBelt(ids){belt.forEach(b=>beltG.remove(b.g));const zc=z1-3;belt=ids.map((id,i)=>{const g=new THREE.Group();prod(id,g,0,0,0);g.position.set(CPOS[0]-.95+i*.34,.99,zc+(i%2?.1:-.1));g.scale.setScalar(1.25);g.rotation.y=(i%3-1)*.4;
   const hit=new THREE.Mesh(new THREE.BoxGeometry(.26,.6,.5),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=.2;hit.userData.i=i;g.add(hit);beltG.add(g);return{g,hit,s:false,t:0}})}
  function beltScan(i){const b=belt[i];if(b&&b.s===false)b.s=true}
  function beltScanAll(){belt.forEach((b,k)=>setTimeout(()=>beltScan(k),k*110))}
@@ -288,7 +299,8 @@ export function initStore(host){
   s.rt=(s.rt||0)-dt;if(!s.rp||s.rt<=0){s.rp=route(m.position.x,m.position.z,tp.x,tp.z);s.rt=.3;s.ri=0}
   let pt=s.rp[Math.min(s.ri,s.rp.length-1)];if(Math.hypot(pt[0]-m.position.x,pt[1]-m.position.z)<.4&&s.ri<s.rp.length-1){s.ri++;pt=s.rp[s.ri]}
   step(m,pt,dt,GS,false,t);return true}
- function tick(t,dt){qm.forEach((m,i)=>m.userData.tg=QS[Math.min(i,QS.length-1)]);[till,...qm].forEach(m=>{const g=m&&m.userData.tg;if(!g)return;const d=Math.hypot(g[0]-m.position.x,g[1]-m.position.z);if(d>.1)step(m,g,dt,2.8,true,t);else idle(m,dt,Math.PI)});
+ function tick(t,dt){qm.forEach((m,i)=>m.userData.tg=QS[Math.min(i,QS.length-1)]);[till,...qm,...svc].forEach(m=>{const g=m&&m.userData.tg;if(!g)return;const d=Math.hypot(g[0]-m.position.x,g[1]-m.position.z);if(d>.1)step(m,g,dt,2.8,true,t);else idle(m,dt,m.userData.fc??Math.PI)});
+  if(pendBelt&&tillReady()){buildBelt(pendBelt);pendBelt=null}
   const bk=dt*60;belt.forEach(b=>{if(b.s!==true)return;b.t+=.05*bk;b.g.position.x+=(CPOS[0]+.6-b.g.position.x)*(1-Math.pow(.8,bk));b.g.position.y=.99+Math.sin(b.t*3)*.12;b.g.scale.multiplyScalar(Math.pow(.93,bk));if(b.t>1){beltG.remove(b.g);b.s=2}});
   cust.forEach(c=>{if(!c.thief||!c.alert||c.state==='caught'||stf.some(s=>s.chase===c))return;const gs=stf.filter(s=>s.kind==='guard'&&!s.chase).sort((p,q)=>Math.hypot(p.m.position.x-c.m.position.x,p.m.position.z-c.m.position.z)-Math.hypot(q.m.position.x-c.m.position.x,q.m.position.z-c.m.position.z));if(gs.length){const g=gs[0];g.chase=c;g.path=null;g.wait=0;g.rp=null;g.rt=0}});
   stf.forEach(s=>{const m=s.m;if(s.kind==='guard'&&guardChase(s,dt,t))return;if(s.wait>0){s.wait-=dt;idle(m,dt,s.face);return}const pt=s.path&&s.path[s.i];if(!pt){if(s.next)s.next(s);else s.wait=5;return}
@@ -305,7 +317,7 @@ export function initStore(host){
   const r=R.domElement.getBoundingClientRect();v2.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);rc.setFromCamera(v2,cam);
   const h=rc.intersectObjects(belt.filter(b=>b.s===false).map(b=>b.hit),false)[0];if(h&&pick)pick(h.object.userData.i)});
  // ===== 鏡頭 =====
- const pre=()=>({all:{x:x1/2-5,z:(z1-6)/2+.5,az:.62,el:.9,dist:Math.min(60,Math.max(22,(x1+17.8)*.97))},cash:{x:xb+1.6,z:z1-2.6,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:x0+W/2-1,z:z0+2,az:.35,el:.75,dist:Math.max(13,W)},food:{x:x0+3,z:z1-1.5,az:.5,el:.85,dist:13},dine:{x:x1+dW/2,z:-.4,az:.55,el:.85,dist:17},title:{x:dc-.6,z:z1+.5,az:.22,el:.2,dist:12,ly:2.3},till:{x:xb,z:z1-2,az:Math.PI,el:.3,dist:3.3,ly:1.15}});
+ const pre=()=>({all:{x:x1/2-5,z:(z1-6)/2+.5,az:.62,el:.9,dist:Math.min(60,Math.max(22,(x1+17.8)*.97))},cash:{x:xb+1.6,z:z1-2.6,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:x0+W/2-1,z:z0+2,az:.35,el:.75,dist:Math.max(13,W)},food:{x:x0+3,z:z1-1.5,az:.5,el:.85,dist:13},dine:{x:x1+dW/2,z:-.4,az:.55,el:.85,dist:17},title:{x:dc-.6,z:z1+.5,az:.22,el:.2,dist:12,ly:2.3},till:{x:xb-.3,z:z1-2,az:Math.PI,el:.5,dist:4.2,ly:1.4}});
  buildShell(1);buildDine(0);
  const goal={...pre().all,ly:.6},cur={...pre().all,ly:.6},pts=new Map(),cv=R.domElement;
  const place=()=>{cam.position.set(cur.x+Math.sin(cur.az)*Math.cos(cur.el)*cur.dist,.6+Math.sin(cur.el)*cur.dist,cur.z+Math.cos(cur.az)*Math.cos(cur.el)*cur.dist);cam.lookAt(cur.x,cur.ly,cur.z)};
@@ -339,5 +351,5 @@ export function initStore(host){
   cust.forEach(c=>{const e=c.tf||(c.bub&&c.bub.e);if(!e)return;if(c.tf)c.tf.textContent='🚨 抓小偷 '+Math.ceil(remT(c));
    const p=tmpV.set(c.m.position.x,c.m.position.y+2.1,c.m.position.z).project(cam),yy=(-p.y*.5+.5)*V.h;if(lock||p.z>1||yy<hH||V.h<240){e.style.display='none';return}
    e.style.display='';e.style.transform=`translate(${(p.x*.5+.5)*V.w}px,${(-p.y*.5+.5)*V.h}px) translate(-50%,-100%)`})})();
- return{thiefCaught,setLevel,setEquip,setStaff,setDine:buildDine,setBags,callDriver,buyerPatrol,slots:()=>SLOTS.map(q=>q.code),setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;},setWall:c=>{wallC=c;walls.forEach(w=>w.material.color.setHex(c))},setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,focus,
+ return{tillReady,serveAt,setQueueSite,thiefCaught,setLevel,setEquip,setStaff,setDine:buildDine,setBags,callDriver,buyerPatrol,slots:()=>SLOTS.map(q=>q.code),setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;},setWall:c=>{wallC=c;walls.forEach(w=>w.material.color.setHex(c))},setOpen:b=>{if(!b)leaveAll()},spawnCustomer,setCounters,icon,focus,
   mark:i=>{const f=FXS[i];if(i<0||!f){ring.visible=false;return}ring.visible=true;ring.position.x=f.x;ring.position.z=f.z+.3}}}
