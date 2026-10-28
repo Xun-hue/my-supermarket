@@ -121,7 +121,7 @@ export function initStore(host){
  const whG=new THREE.Group(),office=new THREE.Group();scene.add(whG,office);office.visible=false;const officeL=label('採購辦公室',-12.4,2.4,3,()=>office.visible);
  const AX=-8.7,OX=-12.4;let WWH=9.6,DWH=7.6,zf=1.3,nBack=3;
  function buildWh(lv){clearGroup(whG);clearGroup(office);WWH=9.6+1.5*(lv-1);DWH=7.6+.5*(lv-1);zf=-6.3+DWH;const xl=-8.2-WWH,cx=-8.2-WWH/2,zm=-6.3+DWH/2;
-  box(WWH,.1,DWH,0xc4c4cc,cx,-.05,zm,whG);box(WWH,1.6,.2,0xb8b8c0,cx,.8,-6.1,whG);box(.2,1.6,DWH,0xb8b8c0,xl+.1,.8,zm,whG);box(WWH,.5,.2,0xb8b8c0,cx,.25,zf,whG);box(WWH,.3,.25,0xc0392b,cx,1.55,-6.05,whG);
+  box(WWH,.1,DWH,0xc4c4cc,cx,-.05,zm,whG);box(WWH,1.6,.2,0xb8b8c0,cx,.8,-6.1,whG);box(.2,1.6,DWH,0xb8b8c0,xl+.1,.8,zm,whG);{const g1=OX-1.2,g2=OX+1.2;box(g1-xl,.5,.2,0xb8b8c0,(xl+g1)/2,.25,zf,whG);box(-8.2-g2,.5,.2,0xb8b8c0,(g2-8.2)/2,.25,zf,whG)}box(WWH,.3,.25,0xc0392b,cx,1.55,-6.05,whG);
   nBack=Math.floor((WWH-1)/2.6);for(let i=0;i<nBack;i++)rack(whG,-10.8-2.6*i,-5.3,0);
   for(let k=0;k<Math.floor((DWH-3.5)/2.6)+1;k++)rack(whG,xl+.8,-3+2.6*k,Math.PI/2);
   for(let r=0;r<2;r++)for(let i=0;i<3-r;i++)box(.7,.5,.6,0xc8955e,-11.6+i*.75+r*.37,.25+r*.5,-3.4,whG);
@@ -305,7 +305,7 @@ export function initStore(host){
   const r=R.domElement.getBoundingClientRect();v2.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);rc.setFromCamera(v2,cam);
   const h=rc.intersectObjects(belt.filter(b=>b.s===false).map(b=>b.hit),false)[0];if(h&&pick)pick(h.object.userData.i)});
  // ===== 鏡頭 =====
- const pre=()=>({all:{x:x1/2-5,z:(z1-6)/2+.5,az:.62,el:.9,dist:Math.min(60,Math.max(22,(x1+17.8)*.97))},cash:{x:xb+1.6,z:z1-2.6,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:x0+W/2-1,z:z0+2,az:.35,el:.75,dist:Math.max(13,W)},food:{x:x0+3,z:z1-1.5,az:.5,el:.85,dist:13},dine:{x:x1+dW/2,z:-.4,az:.55,el:.85,dist:17},till:{x:xb,z:z1-2,az:Math.PI,el:.3,dist:3.3,ly:1.15}});
+ const pre=()=>({all:{x:x1/2-5,z:(z1-6)/2+.5,az:.62,el:.9,dist:Math.min(60,Math.max(22,(x1+17.8)*.97))},cash:{x:xb+1.6,z:z1-2.6,az:.45,el:.62,dist:8},wh:{x:-13,z:-2.5,az:.6,el:1,dist:15},shelves:{x:x0+W/2-1,z:z0+2,az:.35,el:.75,dist:Math.max(13,W)},food:{x:x0+3,z:z1-1.5,az:.5,el:.85,dist:13},dine:{x:x1+dW/2,z:-.4,az:.55,el:.85,dist:17},title:{x:dc-.6,z:z1+.5,az:.22,el:.2,dist:12,ly:2.3},till:{x:xb,z:z1-2,az:Math.PI,el:.3,dist:3.3,ly:1.15}});
  buildShell(1);buildDine(0);
  const goal={...pre().all,ly:.6},cur={...pre().all,ly:.6},pts=new Map(),cv=R.domElement;
  const place=()=>{cam.position.set(cur.x+Math.sin(cur.az)*Math.cos(cur.el)*cur.dist,.6+Math.sin(cur.el)*cur.dist,cur.z+Math.cos(cur.az)*Math.cos(cur.el)*cur.dist);cam.lookAt(cur.x,cur.ly,cur.z)};
