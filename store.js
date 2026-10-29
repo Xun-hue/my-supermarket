@@ -56,24 +56,24 @@ function idle(m,dt,face){const u=m.userData,p=m.position,k=Math.exp(-dt*12);u.vx
  const a=u.arms,j=Math.min(1,dt*10);if(a){a[0].rotation.x*=1-j;a[1].rotation.x*=1-j}p.y*=1-j}
 function shelf(ids,top){const g=new THREE.Group(),fc=0x9aa5b8;
  box(2.3,1.8,.08,fc,0,.9,-.3,g);box(.08,1.8,.65,fc,-1.15,.9,0,g);box(.08,1.8,.65,fc,1.15,.9,0,g);box(2.4,.18,.8,top,0,1.86,0,g);box(2.4,.05,.82,0xffffff,0,1.76,0,g);
- for(let l=0;l<4;l++){box(2.3,.06,.65,0xf4f4f8,0,.08+l*.52,0,g);box(2.3,.04,.04,top,0,.12+l*.52,.32,g);if(l<3&&ids[l])for(let i=0;i<5;i++)REG.push({id:ids[l],k:i,g:prod(ids[l],g,-.88+i*.44,.11+l*.52,.06)})}
+ for(let l=0;l<4;l++){box(2.3,.06,.65,0xf4f4f8,0,.08+l*.52,0,g);box(2.3,.04,.04,top,0,.12+l*.52,.32,g);if(l<3&&ids[l])for(let i=0;i<5;i++)REG.push({id:kid(ids,l),k:i,g:prod(ids[l],g,-.88+i*.44,.11+l*.52,.06)})}
  return g}
 // 冷藏櫃：白色頂箱＋玻璃門＋藍邊層板
 function coldCab(ids){const g=new THREE.Group(),F=0x8fa8c4,BL=0x2d7ff9;
  box(2.4,.14,.95,0x2a2f3a,0,.07,0,g);box(2.3,1.7,.08,F,0,1,-.36,g);box(.08,1.7,.8,F,-1.15,1,0,g);box(.08,1.7,.8,F,1.15,1,0,g);
- for(let l=0;l<3;l++){box(2.3,.05,.72,0xdcecf8,0,.2+l*.55,0,g);box(2.3,.06,.04,BL,0,.23+l*.55,.36,g);if(ids[l])for(let i=0;i<5;i++)REG.push({id:ids[l],k:i,g:prod(ids[l],g,-.88+i*.44,.225+l*.55,.04)})}
+ for(let l=0;l<3;l++){box(2.3,.05,.72,0xdcecf8,0,.2+l*.55,0,g);box(2.3,.06,.04,BL,0,.23+l*.55,.36,g);if(ids[l])for(let i=0;i<5;i++)REG.push({id:kid(ids,l),k:i,g:prod(ids[l],g,-.88+i*.44,.225+l*.55,.04)})}
  box(2.5,.55,1,0xffffff,0,2.08,0,g);box(2.4,.07,.05,BL,0,1.78,.5,g);box(2.3,1.5,.03,0xbfe3ff,0,1.0,.4,g,.22);return g}
 // 冷凍櫃：白色臥式櫃身＋藍條，三格開口各放一種商品
 function freezerCab(ids){const g=new THREE.Group();
  box(2.4,.72,1.1,0xf2f4f7,0,.36,0,g);box(2.42,.1,1.12,0x2d8fc4,0,.45,0,g);box(2.44,.08,1.14,0x2a2f3a,0,.04,0,g);
  box(2.4,.06,.08,0xffffff,0,.78,.51,g);box(2.4,.06,.08,0xffffff,0,.78,-.51,g);box(.08,.06,1.1,0xffffff,-1.16,.78,0,g);box(.08,.06,1.1,0xffffff,1.16,.78,0,g);
  box(2.2,.02,.9,0xcfe8f5,0,.72,0,g);[-.4,.4].forEach(x=>box(.05,.22,.95,0xffffff,x,.84,0,g));
- [-.8,0,.8].forEach((cx,j)=>{if(ids[j])for(let a=0;a<3;a++)for(let b=0;b<3;b++)REG.push({id:ids[j],k:a*3+b,n:9,g:prod(ids[j],g,cx+(a-1)*.2,.73,(b-1)*.27)})});
+ [-.8,0,.8].forEach((cx,j)=>{if(ids[j])for(let a=0;a<3;a++)for(let b=0;b<3;b++)REG.push({id:kid(ids,j),k:a*3+b,n:9,g:prod(ids[j],g,cx+(a-1)*.2,.73,(b-1)*.27)})});
  return g}
 // 蔬果台：木頭台面三個木箱，綠色頂棚
 function produceStand(ids){const g=new THREE.Group(),WD=0x7a4a2b;
  box(2.55,.4,.95,WD,0,.2,0,g);[-1.28,1.28].forEach(x=>box(.1,2.05,.1,WD,x,1.03,-.38,g));box(2.7,.1,.7,0x3fa65b,0,2.08,-.12,g);box(2.7,.18,.06,0x2e8a4a,0,1.98,.22,g);
- [0,1,2].forEach(j=>{const cx=-.85+j*.85;box(.8,.26,.74,0xb98b5e,cx,.52,-.04,g);box(.68,.03,.62,0x6b4426,cx,.64,-.04,g);if(ids[j])for(let a=0;a<3;a++)for(let b=0;b<3;b++){const it=prod(ids[j],g,cx+(a-1)*.2,.66,-.04+(b-1)*.2);it.scale.setScalar(.8);REG.push({id:ids[j],k:a*3+b,n:9,g:it})}});
+ [0,1,2].forEach(j=>{const cx=-.85+j*.85;box(.8,.26,.74,0xb98b5e,cx,.52,-.04,g);box(.68,.03,.62,0x6b4426,cx,.64,-.04,g);if(ids[j])for(let a=0;a<3;a++)for(let b=0;b<3;b++){const it=prod(ids[j],g,cx+(a-1)*.2,.66,-.04+(b-1)*.2);it.scale.setScalar(.8);REG.push({id:kid(ids,j),k:a*3+b,n:9,g:it})}});
  return g}
 // 即期特價區：紅色櫃身＋黃色邊框＋紅色招牌，三個木箱
 function clearStand(){const g=new THREE.Group(),Y=0xf2c230,RD=0xe84a3a,ids=['egg','strawberry','bread'];
@@ -97,7 +97,7 @@ function cartModel(){const g=new THREE.Group();box(.5,.3,.8,0xcfd5df,0,.55,0,g,.
 function kiosk(){const g=new THREE.Group();box(.5,1.1,.6,0xe9edf2,0,.55,0,g);box(.42,.3,.04,0x4dd4ff,0,1.0,.32,g);box(.3,.04,.2,0x22262e,0,.72,.38,g);box(.5,.12,.62,0x2d7ff9,0,1.18,0,g);box(.2,.12,.04,0x22262e,0,.5,.32,g);return g}
 function bikeModel(){const g=new THREE.Group();box(1.1,.35,.4,0x00b4a2,0,.45,0,g);box(.5,.1,.35,0x222222,-.1,.68,0,g);box(.15,.5,.3,0x00b4a2,.5,.6,0,g);box(.5,.45,.45,0xffd23f,-.62,.9,0,g);[-.4,.4].forEach(x=>pm(cyl(.2,.2,.1,12),0x222222,x,.2,0,g,Math.PI/2,0,0));return g}
 function camModel(){const g=new THREE.Group();box(.18,.14,.3,0x2b2f3a,0,0,0,g);pm(cyl(.04,.04,.08,8),0x66c8ff,0,0,.18,g,Math.PI/2,0,0);return g}
-const REG=[];const SHAPED=new Set(['oden','bun','coffee','rice','hotdog','water','cola','chips','noodle','biscuit','spicy','tissue','bread','milk','yogurt','beer','sausage','choco','apple','banana','tomato','egg','strawberry','icecream','dumpling']);let IR;const IC={};
+const REG=[];let KS=null;const kid=(ids,l)=>(KS&&KS[l])||ids[l];const SHAPED=new Set(['oden','bun','coffee','rice','hotdog','water','cola','chips','noodle','biscuit','spicy','tissue','bread','milk','yogurt','beer','sausage','choco','apple','banana','tomato','egg','strawberry','icecream','dumpling']);let IR;const IC={};
 function icon(id){if(!SHAPED.has(id))return null;if(IC[id])return IC[id];
  if(!IR){IR=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});IR.setSize(96,96);IR.setClearColor(0,0)}
  const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0xbbaa99,3.2));const d=new THREE.DirectionalLight(0xffffff,1.6);d.position.set(1,2,3);sc.add(d);
@@ -197,7 +197,7 @@ export function initStore(host){
  const FW=2.6;
  function stand(i){const f=FXS[i],a=f.r*Math.PI/2;return[f.x+Math.sin(a)*1.1,f.z+Math.cos(a)*1.1]}
  function setFixtures(list){curFix=list;REG.length=0;clearGroup(fixG);for(let i=lbl.length-1;i>=0;i--)if(lbl[i].fx===true){lbl[i].e.remove();lbl.splice(i,1)}
-  navFix=[];FXS=[];list.forEach((f,i)=>{const sl=SLOTS.find(q=>q.code===f.pi);if(!sl){FXS.push(null);return}const x=sl.x+(f.dx||0),z=sl.z+(f.dz||0),r=(((f.rot||0)%4)+4)%4,ids=f.pids||[];let g,tx=f.label,ly=2.3;
+  navFix=[];FXS=[];list.forEach((f,i)=>{const sl=SLOTS.find(q=>q.code===f.pi);if(!sl){FXS.push(null);return}const x=sl.x+(f.dx||0),z=sl.z+(f.dz||0),r=(((f.rot||0)%4)+4)%4,ids=f.pids||[];KS=f.keys||null;let g,tx=f.label,ly=2.3;
    if(f.t==='shelf'){g=shelf(ids,i%2?OR:BL);tx=tx||'貨架'}
    else if(f.t==='cold'){g=coldCab(ids);tx=tx||'冷藏櫃';ly=2.6}
    else if(f.t==='produce'){g=produceStand(ids);tx=tx||'蔬果台'}
