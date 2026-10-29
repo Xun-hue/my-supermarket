@@ -108,7 +108,7 @@ export function initStore(host){
  const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio||1,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;host.prepend(R.domElement);
  const scene=new THREE.Scene();scene.background=new THREE.Color(0xbfe3d0);
  const cam=new THREE.PerspectiveCamera(40,1,.1,300);
- scene.add(new THREE.HemisphereLight(0xffffff,0xf0e6d6,2.3));
+ const hemi=new THREE.HemisphereLight(0xffffff,0xf0e6d6,2.3);scene.add(hemi);
  const dl=new THREE.DirectionalLight(0xffffff,1.6);dl.castShadow=true;dl.shadow.mapSize.set(2048,2048);dl.shadow.bias=-.0006;scene.add(dl,dl.target);
  const tree=(p,x,z,s)=>{box(.3*s,1.5*s,.3*s,0x7a4a2b,x,.75*s,z,p);const c=new THREE.Mesh(new THREE.IcosahedronGeometry(1.2*s,0),M(0x4fae4a));c.position.set(x,2.3*s,z);c.castShadow=true;p.add(c)};
  // 戶外背景（固定）
@@ -177,8 +177,8 @@ export function initStore(host){
   Object.assign(dl.shadow.camera,{left:-hx-4,right:hx-4,top:hy,bottom:-hy,near:1,far:90});dl.shadow.camera.updateProjectionMatrix();dl.target.position.set(tx,0,tz);dl.position.set(tx+12,18,tz+10);
   SLOTS=[];const xs=[];for(let x=x0+2;x<=x1-3.35+1e-6;x+=2.6)xs.push(Math.round(x*100)/100);let ri=0;for(let z=z0+.6;z<=z1-5.9+1e-6;z+=3.4,ri++)xs.forEach((x,ci)=>SLOTS.push({code:ri*20+ci,x,z:Math.round(z*100)/100}))}
  // ===== 走道格子：貨架、收銀台、設備會擋路，顧客與員工用 BFS 繞過去 =====
- let gw=0,gh=0,blk=null,navFix=[],navCnt=[],navEq=[],navOn=false;
- function buildNav(){gw=Math.ceil(W/CS);gh=Math.ceil(D/CS);blk=new Uint8Array(gw*gh);const rs=[...navFix,...navCnt,...navEq,[x0+.4,x0+2.8,z1-1.55,z1-.65,.25]];
+ let gw=0,gh=0,blk=null,navFix=[],navCnt=[],navEq=[],navDec=[],navOn=false;
+ function buildNav(){gw=Math.ceil(W/CS);gh=Math.ceil(D/CS);blk=new Uint8Array(gw*gh);const rs=[...navFix,...navCnt,...navEq,...navDec,[x0+.4,x0+2.8,z1-1.55,z1-.65,.25]];
   for(let j=0;j<gh;j++)for(let i=0;i<gw;i++){const x=x0+(i+.5)*CS,z=z0+(j+.5)*CS;let b=x<x0+.45||x>x1-.45||z<z0+.45||z>z1-.45;if(!b)for(const r of rs){const f=r[4]??.25;if(x>r[0]-f&&x<r[1]+f&&z>r[2]-f&&z<r[3]+f){b=true;break}}blk[j*gw+i]=b?1:0}navOn=true}
  const cell=(x,z)=>[Math.min(gw-1,Math.max(0,Math.floor((x-x0)/CS))),Math.min(gh-1,Math.max(0,Math.floor((z-z0)/CS)))];
  function near([i,j]){if(!blk[j*gw+i])return[i,j];for(let r=1;r<12;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;const a=i+di,b=j+dj;if(a>=0&&b>=0&&a<gw&&b<gh&&!blk[b*gw+a])return[a,b]}return[i,j]}
@@ -225,6 +225,16 @@ export function initStore(host){
   if(e.cctv)[[x0+.4,2.35,z0+.4],[x1-.4,2.35,z0+.4],[dc,2.2,z1-.2]].forEach(([x,y,z])=>{const c=camModel();c.position.set(x,y,z);c.rotation.x=.3;eqG.add(c)});
   for(let k=0;k<(e.self||0);k++){const z=z1-5-1.3*k,g=kiosk();g.position.set(x1-.55,0,z);g.rotation.y=-Math.PI/2;eqG.add(g);navEq.push([x1-1.05,x1,z-.5,z+.5,.1])}
   navOn=false;if(curCnt)setCounters(curCnt[0],curCnt[1],e)}
+
+ // ===== 裝潢擺設：盆栽、門口海報立牌、地毯、落地燈 =====
+ const decG=new THREE.Group();scene.add(decG);let curDec={};
+ function setDecor(d){curDec=d||{};clearGroup(decG);navDec=[];const e=curDec;
+  for(let i=0;i<(e.plant||0);i++){const x=x1-.7,z=z0+2.2+i,g=new THREE.Group();g.position.set(x,0,z);box(.5,.45,.5,0xc0713d,0,.22,0,g);box(.56,.06,.56,0xa85d2e,0,.46,0,g);const l=new THREE.Mesh(new THREE.IcosahedronGeometry(.5,0),M(0x3fa65b));l.position.y=1;l.castShadow=true;g.add(l);const l2=new THREE.Mesh(new THREE.IcosahedronGeometry(.32,0),M(0x58c26a));l2.position.set(.15,1.45,.05);g.add(l2);decG.add(g);navDec.push([x-.3,x+.3,z-.3,z+.3,.15])}
+  for(let i=0;i<(e.lamp||0);i++){const x=x0+.55,z=z0+1.2+1.5*i,g=new THREE.Group();g.position.set(x,0,z);box(.04,.04,.04,0x555b6b,0,0,0,g);pm(cyl(.2,.2,.06,12),0x555b6b,0,.03,0,g);box(.06,1.6,.06,0x555b6b,0,.85,0,g);const sh=new THREE.Mesh(cyl(.12,.22,.3,10),new THREE.MeshBasicMaterial({color:0xfff1c4}));sh.position.y=1.75;g.add(sh);decG.add(g);navDec.push([x-.2,x+.2,z-.2,z+.2,.1])}
+  for(let i=0;i<(e.poster||0);i++){const g=new THREE.Group();g.position.set(dc-2.4-1.3*i,0,z1+1.15);const fr=box(.9,1.2,.05,0xffd23f,0,.7,.05,g);fr.rotation.x=-.12;const pt=box(.7,.8,.02,[0xe84a3a,0x2d7ff9,0x3fa65b][i%3],0,.78,.09,g);pt.rotation.x=-.12;const bn=box(.5,.14,.02,0xffffff,0,.95,.1,g);bn.rotation.x=-.12;box(.06,1.1,.05,0x555b6b,0,.55,-.3,g).rotation.x=.35;decG.add(g)}
+  if(e.rug){box(4.4,.02,1.4,0xe8b830,dc-2.2,.015,z1-.9,decG);box(4.1,.03,1.1,0xb5483a,dc-2.2,.025,z1-.9,decG);box(3.5,.035,.5,0xd96a58,dc-2.2,.03,z1-.9,decG)}
+  navOn=false}
+ function setNight(b){scene.background.setHex(b?0x1a2238:0xbfe3d0);hemi.intensity=b?.9:2.3;dl.intensity=b?.35:1.6}
  // ===== 員工（買了才會出現；增減人數時只動那一位）=====
  const stfG=new THREE.Group();scene.add(stfG);let stf=[],curStf={},curBags=0,bagG=new THREE.Group();
  const LIM={stocker:6,guard:2,buyer:2,packer:2,night:2},dskPos=i=>[OX-1.8+3.6*i,zf+.85];
@@ -354,7 +364,7 @@ export function initStore(host){
  const fit=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;V.w=w;V.h=h;R.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()};
  new ResizeObserver(fit).observe(host);fit();
  function focus(n){focusName=n;let p=pre()[n];if(!p&&n.startsWith('shelf')){const s=FXS[+n.slice(5)];if(s)p={x:s.x,z:s.z+.5,az:.3,el:.7,dist:9}}lock=n==='till';if(me)me.visible=!lock;if(p)Object.assign(goal,{ly:.6},p)}
- function setLevel(lv){WS=2.4*(1+.05*(lv-1));buildShell(lv);buildWh(lv);buildDine(dineLv);setFixtures(curFix);setEquip(curEq);rehome();focus(focusName)}
+ function setLevel(lv){WS=2.4*(1+.05*(lv-1));buildShell(lv);buildWh(lv);buildDine(dineLv);setFixtures(curFix);setEquip(curEq);rehome();setDecor(curDec);focus(focusName)}
  setCounters(2,0,null);
  let t=0,lastT=performance.now();(function loop(){requestAnimationFrame(loop);const nw=performance.now(),dt=Math.min(.05,Math.max(.001,(nw-lastT)/1000));lastT=nw;t+=dt;
   const ck=1-Math.pow(.92,dt*60);for(const k in goal)cur[k]+=(goal[k]-cur[k])*ck;place();
@@ -371,5 +381,5 @@ export function initStore(host){
   cust.forEach(c=>{const e=c.tf||(c.bub&&c.bub.e);if(!e)return;if(c.tf)c.tf.textContent='🚨 抓小偷 '+Math.ceil(remT(c));
    const p=tmpV.set(c.m.position.x,c.m.position.y+2.1,c.m.position.z).project(cam),yy=(-p.y*.5+.5)*V.h;if(lock||p.z>1||yy<hH||V.h<240){e.style.display='none';return}
    e.style.display='';e.style.transform=`translate(${(p.x*.5+.5)*V.w}px,${(-p.y*.5+.5)*V.h}px) translate(-50%,-100%)`})})();
- return{setCap:n=>{CAP=n},seatsFree:()=>seats.filter(q=>!q.t).length,diners:()=>seated.length,tillReady,moveCust,laneReady,serveBelt,thiefCaught,setLevel,setEquip,setStaff,setDine:buildDine,setBags,callDriver,buyerPatrol,slots:()=>SLOTS.map(q=>q.code),setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;},setWall:c=>{wallC=c;walls.forEach(w=>w.material.color.setHex(c))},setOpen:b=>{isOpen=b;if(!b){leaveAll();for(const k in lanes){lanes[k].forEach(m=>scene.remove(m));lanes[k].length=0}autos.forEach(a=>a.items.forEach(x=>beltG.remove(x.g)));autos.length=0;autoPend.length=0;till=null;tillId=0;seated.forEach(e=>scene.remove(e.m));seated.length=0;seats.forEach(q=>q.t=null)}},spawnCustomer,setCounters,icon,focus,
+ return{setDecor,setNight,setCap:n=>{CAP=n},seatsFree:()=>seats.filter(q=>!q.t).length,diners:()=>seated.length,tillReady,moveCust,laneReady,serveBelt,thiefCaught,setLevel,setEquip,setStaff,setDine:buildDine,setBags,callDriver,buyerPatrol,slots:()=>SLOTS.map(q=>q.code),setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;},setWall:c=>{wallC=c;walls.forEach(w=>w.material.color.setHex(c))},setOpen:b=>{isOpen=b;if(!b){leaveAll();for(const k in lanes){lanes[k].forEach(m=>scene.remove(m));lanes[k].length=0}autos.forEach(a=>a.items.forEach(x=>beltG.remove(x.g)));autos.length=0;autoPend.length=0;till=null;tillId=0;seated.forEach(e=>scene.remove(e.m));seated.length=0;seats.forEach(q=>q.t=null)}},spawnCustomer,setCounters,icon,focus,
   mark:i=>{const f=FXS[i];if(i<0||!f){ring.visible=false;return}ring.visible=true;ring.position.x=f.x;ring.position.z=f.z+.3}}}
