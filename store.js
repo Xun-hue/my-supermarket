@@ -259,10 +259,10 @@ export function initStore(host){
  const cust=[],COL=[0xe05a4a,0x3fa65b,0x6a5acd,0xf2a33a,0x2d7ff9,0xc2185b];
  let cb=null;
  const exitFrom=m=>[...route(m.position.x,m.position.z,IN[0],IN[1]),[...DOOR],[DOOR[0]+8,SW],[x1+19,SW]];
- function spawnCustomer(cid,stops,thief,hot){if(cust.length>=16||(!hot&&(!stops||!stops.length)))return false;const fl=Math.random()<.5,m=thief?person(0x2a2a30,{hat:1,pants:0x1b1b20,mask:1}):person(COL[rnd(6)]);m.position.set(fl?x0-16:x1+16,0,SW+(Math.random()-.5)*.6);scene.add(m);
+ function spawnCustomer(cid,stops,thief,hot){if(cust.filter(c=>!c.pass).length>=CAP||(!hot&&(!stops||!stops.length)))return false;const fl=Math.random()<.5,m=thief?person(0x2a2a30,{hat:1,pants:0x1b1b20,mask:1}):person(COL[rnd(6)]);m.position.set(fl?x0-16:x1+16,0,SW+(Math.random()-.5)*.6);scene.add(m);
   const path=[[DOOR[0]+(Math.random()-.5)*.8,SW],[...DOOR],[...IN]];let cx=IN[0],cz=IN[1];
   if(hot){const hx=x0+1.6,hz=z1-2.05;route(IN[0],IN[1],hx,hz).forEach(p=>path.push([p[0],p[1]]));const l=path[path.length-1];l[2]=1.6;l[3]='hot';cust.push({m,path,i:0,wait:0,cid,hot:true});return true}
-  stops.forEach(i=>{if(!FXS[i])return;const sp=stand(i);route(cx,cz,sp[0],sp[1]).forEach(p=>path.push([p[0],p[1]]));const l=path[path.length-1];l[2]=1.6+Math.random();l[3]={s:i};cx=sp[0];cz=sp[1]});
+  stops.forEach(i=>{if(!FXS[i])return;const sp=stand(i);route(cx,cz,sp[0],sp[1]).forEach(p=>path.push([p[0],p[1]]));const l=path[path.length-1];l[2]=2.4+Math.random()*2.2;l[3]={s:i};cx=sp[0];cz=sp[1]});
   const c={m,path,i:0,wait:0,cid};
   if(thief){c.thief=true;const fp=route(cx,cz,IN[0],IN[1]).map(p=>[p[0],p[1]]),d=[...DOOR];d[2]=0;d[3]='door';
    let L=0,px=cx,pz=cz;[...fp,d].forEach(q=>{L+=Math.hypot(q[0]-px,q[1]-pz);px=q[0];pz=q[1]});c.fs=Math.min(FS,Math.max(.8,L/9));
@@ -289,7 +289,7 @@ export function initStore(host){
   for(let i=autoPend.length-1;i>=0;i--)if(autoPend[i].cid===cid)autoPend.splice(i,1);return sit}
  function sitDown(c,q){const k=cust.indexOf(c);if(k>=0)cust.splice(k,1);const m=c.m,u=m.userData;m.rotation.y=q.face;m.position.set(q.x,-.17,q.z);u.vx=u.vz=0;u.legs.forEach(x=>x.visible=false);u.sitG.visible=true;if(u.arms)u.arms[0].rotation.x=u.arms[1].rotation.x=-.9;seated.push({m,q,t:16+Math.random()*12})}
  // ===== 小偷：頭上的紅色按鈕、被抓後道歉離開 =====
- const WS=2.7,FS=2.4,GS=4.4,tmpV=new THREE.Vector3();
+ let WS=2.4,CAP=16,isOpen=false;const FS=2.4,GS=4.4,tmpV=new THREE.Vector3();
  function remT(c){if(c.dk==null||c.i>c.dk)return 0;let t=c.wait>0?c.wait:0,x=c.m.position.x,z=c.m.position.z;for(let k=c.i;k<=c.dk;k++){const q=c.path[k];t+=Math.hypot(q[0]-x,q[1]-z)/(k>c.fk||c.fleeing?c.fs:WS)+(k>c.i?(q[2]||0):0);x=q[0];z=q[1]}return t}
  function alertOn(c){if(c.alert||c.state==='caught'||!cb||!cb.thief||!cb.thief(c.cid,'alert'))return;c.alert=true;const e=document.createElement('button');e.className='tf';e.dataset.a='thief';e.dataset.v=c.cid;e.style.display='none';host.appendChild(e);c.tf=e}
  function bubble(c,txt,sec){if(c.bub)c.bub.e.remove();const e=document.createElement('div');e.className='lb sry';e.textContent=txt;e.style.display='none';host.appendChild(e);c.bub={e,t:sec}}
@@ -354,7 +354,7 @@ export function initStore(host){
  const fit=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;V.w=w;V.h=h;R.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()};
  new ResizeObserver(fit).observe(host);fit();
  function focus(n){focusName=n;let p=pre()[n];if(!p&&n.startsWith('shelf')){const s=FXS[+n.slice(5)];if(s)p={x:s.x,z:s.z+.5,az:.3,el:.7,dist:9}}lock=n==='till';if(me)me.visible=!lock;if(p)Object.assign(goal,{ly:.6},p)}
- function setLevel(lv){buildShell(lv);buildWh(lv);buildDine(dineLv);setFixtures(curFix);setEquip(curEq);rehome();focus(focusName)}
+ function setLevel(lv){WS=2.4*(1+.05*(lv-1));buildShell(lv);buildWh(lv);buildDine(dineLv);setFixtures(curFix);setEquip(curEq);rehome();focus(focusName)}
  setCounters(2,0,null);
  let t=0,lastT=performance.now();(function loop(){requestAnimationFrame(loop);const nw=performance.now(),dt=Math.min(.05,Math.max(.001,(nw-lastT)/1000));lastT=nw;t+=dt;
   const ck=1-Math.pow(.92,dt*60);for(const k in goal)cur[k]+=(goal[k]-cur[k])*ck;place();
@@ -364,11 +364,12 @@ export function initStore(host){
    const pt=c.path[c.i];if(!pt){dropC(c);cust.splice(i,1);continue}
    const last=c.i===c.path.length-1,stop=(pt[2]>0)||last,d=step(c.m,pt,dt,c.fleeing?c.fs:WS,stop,t);
    if(d<(stop?.12:.4)){c.wait=pt[2]||0;c.i++;if(pt[3])arrive(c,pt[3])}}
+  if(isOpen&&cust.filter(c=>c.pass).length<6&&Math.random()<dt*.45){const fl=Math.random()<.5,m=person(COL[rnd(6)]);m.position.set(fl?x0-16:x1+16,0,SW+(Math.random()-.5)*.8);scene.add(m);cust.push({m,path:[[fl?x1+22:x0-22,SW+(Math.random()-.5)*.8]],i:0,wait:0,pass:true})}
   tick(t,dt);R.render(scene,cam);cam.updateMatrixWorld();
   const hH=document.getElementById('hud').offsetHeight+4;lbl.forEach(l=>{if(lock||(l.vis&&!l.vis())){l.e.style.display='none';return}const p=l.v.clone().project(cam),yy=(-p.y*.5+.5)*V.h;if(p.z>1||yy<hH||V.h<240){l.e.style.display='none';return}
    l.e.style.display='';l.e.style.transform=`translate(${(p.x*.5+.5)*V.w}px,${(-p.y*.5+.5)*V.h}px) translate(-50%,-100%)`});
   cust.forEach(c=>{const e=c.tf||(c.bub&&c.bub.e);if(!e)return;if(c.tf)c.tf.textContent='🚨 抓小偷 '+Math.ceil(remT(c));
    const p=tmpV.set(c.m.position.x,c.m.position.y+2.1,c.m.position.z).project(cam),yy=(-p.y*.5+.5)*V.h;if(lock||p.z>1||yy<hH||V.h<240){e.style.display='none';return}
    e.style.display='';e.style.transform=`translate(${(p.x*.5+.5)*V.w}px,${(-p.y*.5+.5)*V.h}px) translate(-50%,-100%)`})})();
- return{seatsFree:()=>seats.filter(q=>!q.t).length,diners:()=>seated.length,tillReady,moveCust,laneReady,serveBelt,thiefCaught,setLevel,setEquip,setStaff,setDine:buildDine,setBags,callDriver,buyerPatrol,slots:()=>SLOTS.map(q=>q.code),setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;},setWall:c=>{wallC=c;walls.forEach(w=>w.material.color.setHex(c))},setOpen:b=>{if(!b){leaveAll();for(const k in lanes){lanes[k].forEach(m=>scene.remove(m));lanes[k].length=0}autos.forEach(a=>a.items.forEach(x=>beltG.remove(x.g)));autos.length=0;autoPend.length=0;till=null;tillId=0;seated.forEach(e=>scene.remove(e.m));seated.length=0;seats.forEach(q=>q.t=null)}},spawnCustomer,setCounters,icon,focus,
+ return{setCap:n=>{CAP=n},seatsFree:()=>seats.filter(q=>!q.t).length,diners:()=>seated.length,tillReady,moveCust,laneReady,serveBelt,thiefCaught,setLevel,setEquip,setStaff,setDine:buildDine,setBags,callDriver,buyerPatrol,slots:()=>SLOTS.map(q=>q.code),setClrDisc:n=>{cdD=n;host.querySelectorAll('.lb em.cd').forEach(e=>e.textContent=n+'折')},setTill,leave,setHandlers:o=>{cb=o},setStock:m=>{stk=m;applyStock()},setBelt,beltScan,beltScanAll,onPick:f=>{pick=f},setFixtures,setVisible:(k,v)=>{if(opt[k])opt[k].visible=v;},setWall:c=>{wallC=c;walls.forEach(w=>w.material.color.setHex(c))},setOpen:b=>{isOpen=b;if(!b){leaveAll();for(const k in lanes){lanes[k].forEach(m=>scene.remove(m));lanes[k].length=0}autos.forEach(a=>a.items.forEach(x=>beltG.remove(x.g)));autos.length=0;autoPend.length=0;till=null;tillId=0;seated.forEach(e=>scene.remove(e.m));seated.length=0;seats.forEach(q=>q.t=null)}},spawnCustomer,setCounters,icon,focus,
   mark:i=>{const f=FXS[i];if(i<0||!f){ring.visible=false;return}ring.visible=true;ring.position.x=f.x;ring.position.z=f.z+.3}}}

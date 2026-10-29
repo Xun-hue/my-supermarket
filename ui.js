@@ -77,7 +77,9 @@ function hud(){const pr=S.phase==='prep',m=Math.floor(S.min),T=String(Math.floor
  $('openBtn').style.display=pr?'block':'none';$('closeBtn').style.display=(S.phase==='open'&&S.min>=1320)?'block':'none'}
 // ---- 每天開始：天氣、進價浮動、預計客流、早晨簡報 ----
 function rollDay(){S.wn=[['☀️','晴',1.1],['⛅','多雲',1],['🌧️','雨',.8]][rnd3(3)];P.forEach(p=>{p.old=p.cost;p.cost=Math.max(1,Math.round(p.cb*(.85+Math.random()*.3)))});
- S.expect=Math.round((SPEC(S.lv).flow+((S.eq.dine||0)*10)+(S.member.own?Math.min(30,S.member.count/5):0))*S.wn[2]*(1+[0,.1,.2][S.eq.neon||0]))}
+ calcExpect()}
+const calcExpect=()=>{S.expect=Math.round((SPEC(S.lv).flow+((S.eq.dine||0)*10)+(S.member.own?Math.min(30,S.member.count/5):0))*S.wn[2]*(1+[0,.1,.2][S.eq.neon||0]))}
+const CFG=(()=>{try{return Object.assign({crowd:2},JSON.parse(localStorage.getItem('rrx-cfg')))}catch(e){return{crowd:2}}})(),capFor=()=>Math.round((20+4*S.lv)*[.5,1,1.5,2.2][CFG.crowd]);
 const SAVE='rrx-save-v1';
 function saveGame(){try{localStorage.setItem(SAVE,JSON.stringify({v:1,S:{money:S.money,star:S.star,lv:S.lv,day:S.day,total:S.total,hist:S.hist,member:S.member,own:S.own,eq:S.eq,staff:S.staff,clrD:S.clrD,buyerMid:S.buyerMid,days:S.days},P:P.map(p=>({id:p.id,price:p.price,wh:p.wh,clr:p.clr,lots:p.lots,off:!!p.off})),H:HOT.map(h=>({id:h.id,price:h.price,stock:h.stock,hist:h.hist})),F:S.fxd.map(x=>({t:x.t,pi:x.pi,cl:x.cl,rot:x.rot,dx:x.dx,dz:x.dz,s:x.s.map(sl=>sl?{pid:sl.pid,q:sl.q}:null)}))}))}catch(e){}}
 const readSave=()=>{try{const d=JSON.parse(localStorage.getItem(SAVE));return d&&d.v===1?d:null}catch(e){return null}};
@@ -166,9 +168,17 @@ function rDlv(){const pk=(S.staff.packer||0)>0,st=S.stat,nw=S.dord.filter(o=>o.s
  (S.dord.length?S.dord.map(o=>`<div class=card style="display:block"><div style="display:flex;justify-content:space-between;font-weight:900"><span>#${o.id} ${dTxt(o)}</span><span style="color:#2db36f">${f(dRev(o))}</span></div><div class=pb style="height:8px;margin:8px 0"><i style="width:${Math.max(0,Math.min(100,(o.dl-S.min)/DL*100))}%;background:${o.dl-S.min<60?'#d94452':'var(--grn)'}"></i></div><div style="display:flex;justify-content:space-between;align-items:center"><small style="color:var(--sub);font-weight:700">${o.st==='new'?'等你揀貨':o.st==='packing'?'包貨中…':'已包好，等司機取貨'}</small>${o.st==='new'?btn('dpick',o.id,'揀貨包貨','sm'):o.st==='packing'?'<span class="sm off">包貨中…</span>':'<span class="sm ok">等司機</span>'}</div></div>`).join(''):'<div class=hint>暫時沒有外送訂單</div>')}
 const carts={};
 // ---- 小偷：拿了貨不排隊就跑。玩家點頭上紅按鈕、保全追上去、防盜門攔下，都會把貨放回去 ----
-function hotBuy(cid){const h=pickHot(),st=S.stat;if(!h){if(!HOT.some(x=>x.stock>0))st.lost++;return 0}
+function addHot(c){let wd=false;if(S.own.hot&&Math.random()<.38+(S.eq.dine?.17:0)){const h=pickHot();if(h){h.stock--;c.items.push({id:h.id,s:false,pr:h.price,hot:1});c.sum+=h.price;c.cogs+=h.cost;wd=!!S.eq.dine&&store.seatsFree()>0&&Math.random()<.75;if(Math.random()<.2){const h2=pickHot();if(h2){h2.stock--;c.items.push({id:h2.id,s:false,pr:h2.price,hot:1});c.sum+=h2.price;c.cogs+=h2.cost}}}}return wd}
+// 超過同屏上限的顧客不畫出來，但照樣進店、逛貨架、結帳，營收不受影響
+function virtualVisit(hot){const cn=Math.min(S.staff.cashier||0,SPEC(S.lv).reg-1),sn=S.eq.self?SPEC(S.lv).self:0,who=cn>0?'cashier':sn>0?'self':S.tab==='cash'?'you':null;S.visit++;
+ if(!who){S.stat.lost++;return}
+ if(hot){hotBuy(0,true);return}
+ const cid=++TID;carts[cid]={items:[],sum:0,cogs:0};stopsFor().forEach(fi=>take(cid,fi));const c=carts[cid];delete carts[cid];if(!c.items.length){S.stat.lost++;return}
+ addHot(c);const mem=S.member.own&&Math.random()<Math.min(.6,S.member.count/200),total=mem?Math.round(c.sum*S.member.disc/100):c.sum;
+ done({items:c.items,sum:c.sum,total,cogs:c.cogs,mem,pm:'qr',id:cid,pat:1},{auto:1,who,perfect:0})}
+function hotBuy(cid,virt){const h=pickHot(),st=S.stat;if(!h){if(!HOT.some(x=>x.stock>0))st.lost++;return 0}
  h.stock--;h.sold++;h.rev+=h.price;S.money+=h.price;S.total+=h.price;st.gross+=h.price;st.cogs+=h.cost;st.hot++;st.hotRev+=h.price;st.by.hot.n++;st.by.hot.rev+=h.price;
- const dn=!!S.eq.dine&&store.seatsFree()>0&&Math.random()<.8;if(dn)st.dine++;hud();return dn?2:1}
+ const dn=!virt&&!!S.eq.dine&&store.seatsFree()>0&&Math.random()<.8;if(dn)st.dine++;hud();return dn?2:1}
 function thiefBack(cid,by){const c=carts[cid];if(!c)return;c.items.forEach(back);delete carts[cid];S.stat.caught++;store.thiefCaught(cid);
  toast(by==='guard'?'🚔 保全抓住了小偷，東西都放回去了':by==='gate'?'🚪 防盜門響了，小偷被攔下，東西放回去了':'👆 抓住小偷了！東西放回去了');hud();if(S.tab==='shelf'||S.tab==='wh')render()}
 function thiefEv(cid,ev){const c=carts[cid];
@@ -187,7 +197,7 @@ function pickLane(){const act=activeLanes();let best=null,bc=1e9;act.forEach(k=>
 function rebalance(){const act=activeLanes();let ch=false;S.queue.slice().forEach(t=>{if(t.srv)return;const bad=t.lane==='hold'?act.length>0:!act.includes(t.lane);if(!bad)return;const old=t.lane;t.lane=null;const k=pickLane();if(!k){t.lane=old;return}t.lane=k;if(k!==old){S.queue=S.queue.filter(x=>x!==t);S.queue.push(t);store.moveCust(t.id,k);ch=true}});return ch}
 function arrive(cid){const c=carts[cid];delete carts[cid];if(!c||!c.items.length){S.stat.lost++;return false}
  const lane=pickLane();if(!lane){c.items.forEach(back);S.stat.lost++;return false}
- let wantDine=false;if(S.own.hot&&Math.random()<.38+(S.eq.dine?.17:0)){const h=pickHot();if(h){h.stock--;c.items.push({id:h.id,s:false,pr:h.price,hot:1});c.sum+=h.price;c.cogs+=h.cost;wantDine=!!S.eq.dine&&store.seatsFree()>0&&Math.random()<.75;if(Math.random()<.2){const h2=pickHot();if(h2){h2.stock--;c.items.push({id:h2.id,s:false,pr:h2.price,hot:1});c.sum+=h2.price;c.cogs+=h2.cost}}}}
+ const wantDine=addHot(c);
  const sum=c.sum,mem=S.member.own&&Math.random()<Math.min(.6,S.member.count/200),total=mem?Math.round(sum*S.member.disc/100):sum,r=Math.random(),pm=r<.5?'cash':r<.8?'qr':'card',
  t={items:c.items,sum,total,cogs:c.cogs,mem,pm,pat:1,ph:'scan',chg:[],cs:null,id:cid,who:['上班族','學生','阿嬤','大叔','媽媽'][rnd3(5)]};
  if(pm==='cash'){const o=[...new Set([total,Math.ceil(total/10)*10,Math.ceil(total/50)*50,Math.ceil(total/100)*100,500,1000])].filter(x=>x>=total);t.given=o[rnd3(o.length)];t.due=t.given-total;if(total%10>0&&Math.random()<.22){t.ask='pending';t.askAmt=total%10}}
@@ -281,15 +291,16 @@ function rFood(){if(!S.own.hot)return `<div class=c><div style="font-size:40px">
  `<div class=hint style="margin-top:4px">價格高於參考價太多就沒人買；採購員會自動補快用完的食材</div><div class=hd style="font-size:14px;margin-top:10px"><span>就餐區</span></div>`+
  (dl?`<div class=card style="background:linear-gradient(135deg,#ff7a63,#ff4d4d);color:#fff;border:0"><span class=ic>🪑</span><div class=nm>桌子 ${tb} 張（${tb*2} 個座位）<small style="color:#ffe3dd">現在有 ${store.diners()} 人在吃 · 今天內用 ${S.stat.dine} 人</small></div></div>`+(dl<3?`<div class=card><div class=nm>擴建用餐區<small>房間變大、桌椅變多，熱食更好賣</small></div>${btn('tab','exp','去擴店','sm')}</div>`:'<div class="hint" style="border-color:#bfe6cf">就餐區擺滿啦</div>'):`<div class=hint>還沒有用餐區：到「擴店 → 設備」購買，顧客買了熱食可以坐下來吃</div>`)}
 function rSet(){const row=(n,d,b)=>`<div class=row><div class=nm>${n}<small>${d}</small></div>${b}</div>`;
- return `<div class=hd><span>設定</span></div>`+row('畫質','卡頓時選流暢',btn('toast','之後接上','標準','sm g'))+row('同屏顧客','少一點更流暢',btn('toast','之後接上','正常','sm g'))+row('超市名字','日日鮮超市',btn('toast','之後接上','改名','sm g'))+row('雲存檔','之後用 Firebase 接上',btn('toast','之後接上','同步','sm g'))+row('測試工具','開發階段用，正式版會拿掉',btn('dbg','money','+$10,000','sm g')+btn('dbg','lv','升一級','sm g'))+row('遊戲怎麼玩','各項功能的說明',btn('howto','x','查看','sm g'))+`<div style="margin-top:12px">${btn('reset','x','重新開店','btn g w')}</div>`}
+ return `<div class=hd><span>設定</span></div>`+row('畫質','卡頓時選流暢',btn('toast','之後接上','標準','sm g'))+row('畫面顧客數','少一點比較不卡；超過的顧客不顯示，照樣結帳',btn('crowd','x',['少','普通','多','很多'][CFG.crowd],'sm g'))+row('超市名字','日日鮮超市',btn('toast','之後接上','改名','sm g'))+row('雲存檔','之後用 Firebase 接上',btn('toast','之後接上','同步','sm g'))+row('測試工具','開發階段用，正式版會拿掉',btn('dbg','money','+$10,000','sm g')+btn('dbg','lv','升一級','sm g'))+row('遊戲怎麼玩','各項功能的說明',btn('howto','x','查看','sm g'))+`<div style="margin-top:12px">${btn('reset','x','重新開店','btn g w')}</div>`}
 function syncScene(){const sp=SPEC(S.lv),c=Math.min(S.staff.cashier||0,sp.reg-1),e=S.eq,eq={neon:e.neon||0,whx:e.whx||0,music:!!e.music,scan:!!e.scan,pos:!!e.pos,ac:!!e.ac,cart:!!e.cart,change:!!e.change,self:e.self?sp.self:0,charge:!!e.charge,delivery:!!e.delivery,gate:!!e.gate,cctv:!!e.cctv},st={stocker:S.staff.stocker||0,buyer:S.staff.buyer||0,guard:S.staff.guard||0,packer:S.staff.packer||0,night:S.staff.night||0};
  if(syncScene.lv!==S.lv){syncScene.lv=S.lv;store.setLevel(S.lv)}
+ {const cp=capFor();if(syncScene.cp!==cp){syncScene.cp=cp;store.setCap(cp)}}
  const k1=sp.reg+'/'+c+'/'+JSON.stringify(eq),k2=JSON.stringify(st);
  if(syncScene.k1!==k1){syncScene.k1=k1;store.setEquip(eq);store.setCounters(sp.reg,c,eq)}
  if(syncScene.k3!==(e.dine||0)){syncScene.k3=e.dine||0;store.setDine(syncScene.k3)}
  if(syncScene.k2!==k2){syncScene.k2=k2;store.setStaff(st)}}
 const ico=p=>{const u=store.icon(p.id);return u?`<img src="${u}" width=40 height=40 style="object-fit:contain">`:p.e};
-function render(){autoPlace();syncScene();syncStore();{const tl=S.tab==='cash'&&!!S.cur;if(render.tl!==tl){const ap=$('app');if(tl){render.sv=ap.style.getPropertyValue('--sh');ap.style.setProperty('--sh','34%')}else if(render.sv!==undefined){ap.style.setProperty('--sh',render.sv||'44%');render.sv=undefined}render.tl=tl;focus()}}if(S.tab==='dlv'&&!S.eq.delivery)S.tab='cash';$('tabs').innerHTML=tabsNow().map(([k,i,n])=>`<button class="tab${S.tab===k?' on':''}" data-a="tab" data-v="${k}"><b>${i}</b>${n}${k==='dlv'&&S.dord.filter(o=>o.st==='new').length?`<em class=bd>${S.dord.filter(o=>o.st==='new').length}</em>`:''}</button>`).join('');
+function render(){calcExpect();autoPlace();syncScene();syncStore();{const tl=S.tab==='cash'&&!!S.cur;if(render.tl!==tl){const ap=$('app');if(tl){render.sv=ap.style.getPropertyValue('--sh');ap.style.setProperty('--sh','34%')}else if(render.sv!==undefined){ap.style.setProperty('--sh',render.sv||'44%');render.sv=undefined}render.tl=tl;focus()}}if(S.tab==='dlv'&&!S.eq.delivery)S.tab='cash';$('tabs').innerHTML=tabsNow().map(([k,i,n])=>`<button class="tab${S.tab===k?' on':''}" data-a="tab" data-v="${k}"><b>${i}</b>${n}${k==='dlv'&&S.dord.filter(o=>o.st==='new').length?`<em class=bd>${S.dord.filter(o=>o.st==='new').length}</em>`:''}</button>`).join('');
  const keep=$('sheet').scrollTop;$('sheet').innerHTML='<div class=grab><i></i></div>'+({dlv:rDlv,cash:rCash,shelf:rShelf,wh:rWh,price:rPrice,exp:rExp,food:rFood,set:rSet})[S.tab]();$('sheet').scrollTop=keep;hud()}
 // ---- 動作 ----
 function buy(v){const[k,id]=v.split('|'),it=CAT[k].find(x=>x[0]===id),pri=it[4];
@@ -328,6 +339,7 @@ function act(a,v){v=String(v);const[x,y]=v.split('|');
  else if(a==='cdisc'){S.clrD=+v;store.setClrDisc(S.clrD);toast('即期區改成 '+v+' 折')}
  else if(a==='hbuy'){const h=hotOf(v);if(h){if(S.money<h.bcost)toast('資金不足',1);else{S.money-=h.bcost;h.stock+=h.batch;toast('進貨 '+h.n+' '+h.batch+' 份')}}}
  else if(a==='hprice'){const[i,d]=v.split('|'),h=hotOf(i);if(h)h.price=Math.max(1,h.price+ +d*(h.price<30?1:5))}
+ else if(a==='crowd'){CFG.crowd=(CFG.crowd+1)%4;try{localStorage.setItem('rrx-cfg',JSON.stringify(CFG))}catch(e){}toast('畫面顧客數：'+['少','普通','多','很多'][CFG.crowd])}
  else if(a==='bm'){S.buyerMid=!S.buyerMid}
  else if(a==='fsell'){const i=+v,x0=S.fxd[i];if(!x0)return;if(S.fxd.length<=1)toast('至少要留一個貨架',1);else{S.money+=Math.round(FIXT[x0.t].price/2);x0.s.forEach(sl=>{if(sl)unplace(pr(sl.pid))});S.fxd.splice(i,1);S.sel=-1;store.mark(-1);autoPlace();toast('已賣掉 '+FIXT[x0.t].n)}}
  else if(a==='selm'){const n=S.fxd.length;S.sel=((S.sel+ +v)%n+n)%n;store.mark(S.sel);focus()}
@@ -357,7 +369,7 @@ function act(a,v){v=String(v);const[x,y]=v.split('|');
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)act(b.dataset.a,b.dataset.v??'x')});
 function checkOrders(){const d=S.orders.filter(o=>S.min>=o.eta);if(d.length){d.forEach(o=>recv(pr(o.id),o.q));S.orders=S.orders.filter(o=>S.min<o.eta);{const t=shTxt();toast(t||'📦 貨到了！',!!t)};if(S.tab==='wh')render()}}
 let lt=performance.now();(function loop(){requestAnimationFrame(loop);const n=performance.now(),dt=Math.min(.2,(n-lt)/1000);lt=n;
- if(S.phase==='open'&&S.min<1320){const o=Math.floor(S.min);S.min=Math.min(1320,S.min+dt*3);if(Math.floor(S.min)!==o){if(Math.random()<S.expect/840){const cid=++TID;const th=Math.random()<(S.eq.cctv?.018:.03);carts[cid]={items:[],sum:0,cogs:0,thief:th};if(store.spawnCustomer(cid,stopsFor(),th))S.visit++;else delete carts[cid]};if(S.own.hot&&Math.random()<S.expect*.28*(1+(S.eq.dine?.35:0))/840){const cid=++TID;if(store.spawnCustomer(cid,[],false,true))S.visit++}if(S.eq.delivery&&Math.random()<SPEC(S.lv).flow*.12/840)newDeliveryOrder();if(S.staff.buyer&&S.buyerMid&&Math.floor(S.min)%20===0)store.buyerPatrol();checkOrders();hud();if(S.tab==='dlv'&&Math.floor(S.min)%3===0)render()}}if(S.phase==='open')tickCash(dt)})(); // 遊戲時間每秒走 3 分鐘，一分鐘一分鐘平順地走
+ if(S.phase==='open'&&S.min<1320){const o=Math.floor(S.min);S.min=Math.min(1320,S.min+dt*3);if(Math.floor(S.min)!==o){if(Math.random()<S.expect*(S.own.hot?.8:1)/840){const cid=++TID;const th=Math.random()<(S.eq.cctv?.018:.03);carts[cid]={items:[],sum:0,cogs:0,thief:th};if(store.spawnCustomer(cid,stopsFor(),th))S.visit++;else{delete carts[cid];if(!th)virtualVisit(false)}};if(S.own.hot&&Math.random()<S.expect*.2*(1+(S.eq.dine?.35:0))/840){const cid=++TID;if(store.spawnCustomer(cid,[],false,true))S.visit++;else virtualVisit(true)}if(S.eq.delivery&&Math.random()<SPEC(S.lv).flow*.12/840)newDeliveryOrder();if(S.staff.buyer&&S.buyerMid&&Math.floor(S.min)%20===0)store.buyerPatrol();checkOrders();hud();if(S.tab==='dlv'&&Math.floor(S.min)%3===0)render()}}if(S.phase==='open')tickCash(dt)})(); // 遊戲時間每秒走 3 分鐘，一分鐘一分鐘平順地走
 autoPlace();render();
 store.setHandlers({hotBuy,thief:thiefEv,take,arrive,job:stockJob,pickup:jobPick,deliver:jobDrop,cancel:jobCancel,buyerDone,driverPicked});store.onPick(i=>{if(S.cur&&S.cur.ph==='scan')act('scan',i)});store.setClrDisc(S.clrD);syncStore();store.setOpen(false);rollDay();
 {const d=readSave(),t=document.createElement('div');t.id='title';t.innerHTML='<div class=tl><div class=tn><b>日日鮮</b><i>超市</i></div><p>進貨・定價・收銀找零・擴店升級</p>'+(d?`<button class=btn data-a="tcont" data-v="x">繼續營業<small>「日日鮮超市」第 ${d.S.day} 天 · ${f(d.S.money)}</small></button><button class="btn g" data-a="tnew" data-v="x">開一家新店</button>`:`<button class=btn data-a="tnew" data-v="x">開始營業</button>`)+'<em>進貨要精打細算，有賺有賠（純屬遊戲）</em></div>';
